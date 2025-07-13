@@ -1,0 +1,446 @@
+# Developer Guidelines
+
+Organized alphabetically. Lists guidelines for a developer - including technical
+and non technical subjects.
+
+--------------
+--------------
+--------------
+--------------
+--------------
+
+# Ask
+
+Put in a reasonable effort to understand something. If that doesn't work, ask
+for help. It is irresponsible to neglect to use the resources that are
+available, including the support of others.
+
+# Composition Over Inheritance
+
+There's plenty of
+[material](https://en.wikipedia.org/wiki/Composition_over_inheritance) online.
+Inheritance is extremely difficult to follow, and a system like Rust's traits is
+the correct way of going about this. Especially when hitting something like the
+[diamond problem](https://en.wikipedia.org/wiki/Multiple_inheritance),
+inheritance just doesn't model the world in a good way. And more importantly, it
+can become impossible to follow! Logic should be explicitly opted-in, not
+implicitly inherited.
+
+# Dependencies - Reduce
+
+Organized from best to worst. In summary, prefer dependency-less code
+and avoid shell scripts.
+
+ - Static Link
+ - Dynamic Link
+ - External Process ([execl](https://linux.die.net/man/3/execl))
+ - Shell Scripts
+
+### Static Linked
+
+Suppose a program is created. On your system, it works fine. On a different
+system, it fails. It could fail because the shell version is different. Or maybe
+an external library is an incompatible version, etc.
+
+Containerization can help, but has other issues.
+  - The user needs a container runtime installed
+  - The container might need to be minimalized and hardened depending on
+    deployment requirements
+
+This problem can be remediated by creating a statically linked program (check
+with `ldd <binary>`).
+
+Here's a simple but extensible example. Of note from a shell script point of
+view, globbing and other features typically associated with the shell are
+available in your language of choice.
+
+```go
+package main
+import "os"
+func main() {
+    // sys call caller logic statically linked in binary. but, still depends on:
+    //  - compilation architecture (e.g. arm64)
+    //  - operating system ABI (e.g. darwin)
+    err := os.Remove("test.txt")
+    ...
+}
+```
+
+### Dynamically Linked
+
+This is required when there are some libraries that are only available on the
+target system (e.g. graphics related libs). It can also reduce the size of the
+binary, but that's typically not worth the tradeoff.
+
+```go
+package main // -ldflags="-linkmode=external"
+
+/*
+#include <stdio.h>
+#include <stdlib.h>
+*/
+import "C"
+import "unsafe"
+func main() {
+	msg := C.CString("Hello from C!")
+	defer C.free(unsafe.Pointer(msg))
+	if C.puts(msg) < 0 { /* ... */ }
+}
+```
+
+Even just this simple step will fail to link on systems with an incompatible
+GLIBC version.
+
+### External Process
+
+Suppose you need the functionality of some system tool, but that tool does not
+expose a linkable library. In that case it must be invoked using its command
+line interface.
+
+```go
+package main
+import("os/exec";"os")
+func main(){
+    // relies on command available and on $PATH
+	err:=exec.Command("rm","--","test.txt").Run()
+    ...
+}
+```
+
+### Shell
+
+Shell scripts do have a niche. If can reduce the verbosity of writing a
+procedure when compared to os/exec'ing external processes. They are pretty small
+and auditable as well (just open up the script to read what it does!).
+However...
+
+Shell scripts are highly coupled with a single deployment target.
+ - Depends on what program (and version!) will be interpreting the script.
+ - Depends on every single program which is used in the script. What if `curl`
+   or `zip` isn't available on a system?
+ - Needs to be re-written for Windows OS. Or a translation layer / sandbox like
+   Cygwin, WSL, or Git Bash could be used.
+
+Shell scripts are [bug
+prone](https://blog.cloudflare.com/pipefail-how-a-missing-shell-option-slowed-cloudflare-down/?utm_source=chatgpt.com/).
+Consider setting [strict
+mode](http://redsymbol.net/articles/unofficial-bash-strict-mode/):
+
+```bash
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+```
+
+Using the command line for passing input is bug prone.
+
+```bash
+rm $FILE        # WRONG. $FILE can expand: `file_name; malicious code here`
+rm "$FILE"      # WRONG. $FILE can be a flag like "-f". interpreted by CLI
+rm -- "$FILE"   # CORRECT. now check all tools for where this is needed
+```
+
+All of this shell nonsense can be avoided, since os/exec'ing a subprocess
+directly passes the arguments to the tool without being interpreted.
+
+# Ergonomics
+
+It should be easy for developers to do what they need to do.
+
+Suppose there is some large tech stack being used; the whole system can't be run
+on a single developer's machine. This means that there is some environment which
+is shared between developers. There must be an explicit system so that
+developers are not interfering with each-other. This could be as simple as a
+messaging thread.
+
+If a developer needs to test a feature it should be easy to do so.
+ - There should be no ambiguity on what version is deployed.
+ - Redeployment should be fast. Developers work off of rapid iteration, and
+   waiting for a CI/CD pipeline lengthens the debugging cycle. The whole stack
+   should not need to be redeployed; it should be properly modularized so a
+   single part can be swapped out as desired, ideally instantaneously.
+ - The logs or other feedback mechanisms must be available and easy to use.
+   Ideally an event streaming service like kafka will allow a developer to view
+   only what they want.
+
+# Feedback
+
+Feedback is not a personal attack; it doesn't reflect on you as a person. It is
+only reflective of that particular work item. It is a typical part of the
+review process - no feedback is abnormal.
+
+Always be open to feedback and discussion on your work. Always try to understand
+others' perspectives, and in turn, explain your perspective to them. A long
+comment is indicative of _interest_.
+
+You are not an infalliable god over your own domain.
+
+In line with the above: when giving feedback, try to be concise and write with a
+suggestive or question form. "Have you considered... ?"
+
+# Forward Compatibility
+
+Once something starts getting used everywhere, its design gets locked in place
+pretty fast. All the dependees needs to be updated, and good luck if its
+deployed on premise. There needs to be a plan to support forwards compatibility
+before things go out. This could be something as simple as adding a version
+field to schemas or leaving future placeholders in library API. It's simple,
+costs very little, but pays dividends.
+
+# Function Too Small
+
+Here a function creates a resty (http) client request and sets a token. The
+returned instance can then be used to finalize the details of the request and
+send it.
+
+```go
+func (r *Redacted) r() *resty.Request {
+    r := r.resty.R()
+    r.SetCookie(rl.authCookie)
+    return r
+}
+```
+
+This might seem innocent enough. Maybe it would make sense if this one small
+section is repeated numerous times. But otherwise, good luck reading through
+code that's 5+ layers deep of tiny abstractions! It can become impossible.
+
+Here's an extreme example:
+
+```go
+func ToPointer[V any](value V) *V {
+    return &value
+}
+```
+
+This is only a hindrance since now more mental load is required to map to what
+the author wrote instead of just writing: `&value`. Abstractions should cause
+less work, not more work.
+
+<small>(an exception to this is getters and setters, which are necessary to
+control access to data in some languages)</small>
+
+# Moderation
+
+This document is intended as an augmentation, not a substitution, for your own
+thinking. Understand the situation and use your judgment.
+
+# Modularity
+
+There should be as little coupling between features as possible (axiom 1 of
+[axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)).
+
+Loosely coupled components linked by well defined interfaces is a must; bugs or
+quality issues can then be isolated along boundaries. If the interface is poorly
+defined, then all components which depend on it will suffer.
+
+### Requirements for Centralization
+
+Suppose there are many sources and one sink. This could be over a network, or
+just following the flow through some code. The sources all do different things.
+They all handle some cleanup of upstream data, maybe some enrichment,
+transformation, and processing which is specific to each source itself. 
+
+It is the responsibility of each source to coax its data into the form that the
+sink is expecting. It is not the responsibility of the sink to mangle everyone's
+formats into one form - this causes too much logical burden and interleaving.
+Each source only has to handle its domain, so it keeps a clear division of where
+logic must be applied; it allows the problem to be modularized as smaller
+clearly defined sub-problems which can be more easily handled individually.
+
+There may be the temptation to centralize some of the logical processing to the
+sink. Suppose there is some processing common to all sources. Rather than
+repeating logic, put it in
+[one](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) place. However,
+this can cause problems; there must be the absolute guarantee that the logic
+will be applied to _all_ sources, including hypothetical ones.
+
+If it only applies to some of the sources, then those sources should explicitly
+opt in to that logic on their end! Otherwise, there will be logical scope creep
+at the sink. e.g. "This field should be lowercase. One of the sources did not
+follow this, so I'll lowercase it for everyone". Now there is implicit
+downstream logic which a source may not even want. And it's muddied the
+interface between source and sink.
+
+Repeating code in this way is ok; common code can be managed as a library. Each
+source can explicitly opt-in to common processing by using the library.
+
+# Reuse Work
+
+Doing something like this (using an established library):
+
+```go
+details := auth.NewArtifactoryDetails()
+details.SetUrl(url)
+details.SetUser(cfg.Username)
+details.SetAccessToken(cfg.Token)
+serviceConfig, err := config.NewConfigBuilder().
+    SetServiceDetails(details).
+    Build()
+if err != nil { ... }
+rtManager, err := artifactory.New(serviceConfig)
+if err != nil { ... }
+bytes, err := rtManager.Ping()
+..
+...
+```
+
+is WAY easier and WAY safer than constructing the api calls yourself
+via manual string manipulation + unmarshalling the rest responses:
+
+```go
+url := cfg.BitbucketURL + "/repositories/" + cfg.BitbucketWorkspace
+     + "?fields=next,values.name,values.updated_on&sort=updated_on"
+if lastCheck != "" {
+    url += "&q=updated_on>" + strings.Replace(lastCheck, "+", "%2B", -1)
+}
+ 
+req, err := http.NewRequest("GET", url, nil)
+if err != nil { ... }
+req.SetBasicAuth(cfg.BitbucketUsername, cfg.BitbucketAppPW)
+
+rsp, err := http.DefaultClient.Do(req)
+if err != nil { ... }
+defer rsp.Body.Close()
+if rsp.StatusCode != http.StatusOK {
+    ...
+}
+var buf bytes.Buffer
+tee := io.TeeReader(rsp.Body, &buf)
+b, err := io.ReadAll(tee)
+...
+```
+
+# Review with Effort
+
+Good heavens! Here, a function is declared with an argument. The argument is
+immediately discarded.
+
+```go
+func (r *Redacted) do_something(repo string) error {
+    _ = repo
+    // ...
+}
+```
+
+Writing quality the first time is easier then going back and fixing things up.
+Fortunately this case is easy to fix (it's known what the original intent was,
+and it can be fixed without having unforeseen side effects), but if it can
+happen here then it can happen in more difficult cases as well. Take time on
+reviews, spend effort to understand the context, and don't approve merge
+requests haphazardly!
+
+# Seek Parsimoniety (Occam's razor)
+
+The simplest solution which fullfills requirements is the correct solution
+(axiom 2 of [axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)).
+Complexity breeds more complexity, as it requires a larger mental load to break
+apart a large solution and describe it in a better way before changes can be
+made. 
+
+In the short term, it is always easier to staple a feature on top of an existing
+project. It is harder, but sometime necessary, to rethink the existing solution
+in a way which better integrates with a feature. Entropy must be actively
+opposed.
+
+# State Synchronization
+
+Having multiple states which must be kept in sync is bug prone. If these cases,
+there should be a strong abstraction to prevent error (should set state in
+multiple places automatically).
+
+"Give someone state and they'll have a bug one day, but teach them how to
+represent state in two separate locations that have to be kept in sync and
+they'll have bugs for a lifetime" -ryg
+
+# Team Cohesion
+
+Working online is great. There's no need to commute to work. Productivity on an
+individual scale increases (the office is distracting). However, team cohesion
+suffers. There needs to be an effort to ensure inter and intra team
+synchronization. If the left hand doesn't know what the right hand is doing,
+then that's not good. From base principals, there should be an understand of how
+the company runs, and holistically what clients want.
+
+# Tests Because Tests
+
+Suppose you're developing a mission critical component and you have a ton of
+time. In that case it makes sense to add unit tests for complete coverage, and
+why not add in some fuzzing and static analysis in there as well. If there's a
+network dependency, then use a mocking framework. Ad nauseam. Those
+circumstances do pop up, but in a majority of cases it isn't worth it.
+Especially if the thing is simple, there's a deadline, and maybe there's just a
+bunch of components to get through this week. Practicality gets in the way.
+
+Testing should be done where it makes sense to do so! Anecdotally a
+disproportionate push for testing was because _surrounding or previous
+components are clearly lacking in quality_. Time might be better spent writing
+verifiable quality in the first place:
+
+ - using higher level abstractions (libraries, and reduce manual memory management)
+ - rethinking complexity in terms of axiomatic design
+ - evaluating surrounding infrastructure (misconfigured devops, etc.)
+ - a comprehensive QA list and plan
+
+# Type System - Prefer Strong Types
+
+Prefer stronger typing over weaker typing. It prevents mistakes and is a form of
+documentation.
+
+
+```rust
+struct Bytes(pub u32) // NOT BITS
+```
+
+Especially when dealing with variance in the data. Only valid options should be
+representable:
+
+```rust
+// don't represent as string!
+//  - SHA-256
+//  - SHA256
+//  - sha 256
+//  - SHA2-256
+// ...
+enum Algorithm {
+    SHA128,
+    SHA256,
+    // ...
+}
+```
+
+This also has implications for a database; a fixed length type which uses
+integer comparison is handled better than a variable length type (memory issues)
+which uses a string comparison (slower).
+
+From a general ergonomics standpoint, golang's conventional error handling is
+not good because the builtin error type is an opaque string value. One must
+parse the string to find out the enumerated types of errors that can occur in
+order to handle each case appropriately. Most of the time all errors are handled
+in the same way (the operation failed overall) but in some cases this is
+important to expose for the caller.
+
+Unrepresentable states should be impossible. This is one of the reasons why C is
+bad; it's not (reasonably) possible in the language:
+
+```C
+enum ThingType {
+    THING_TYPE_INT
+    THING_TYPE_FLOAT
+}
+
+union ThingValue {
+    int thing_int;     // only if THING_TYPE_INT variant
+    float thing_float; // only if THING_TYPE_FLOAT variant
+}
+
+struct Thing {
+    ThingType type;
+    ThingValue value;
+}
+
+Thing thing;
+thing.type = THING_TYPE_INT;
+thing.value.thing_float = 1.0; // OOPS
+```
+
