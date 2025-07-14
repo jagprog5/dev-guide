@@ -1,13 +1,12 @@
+<center>
+
 # Developer Guidelines
+
 
 Organized alphabetically. Lists guidelines for a developer - including technical
 and non technical subjects.
 
---------------
---------------
---------------
---------------
---------------
+</center>
 
 # Ask
 
@@ -15,12 +14,29 @@ Put in a reasonable effort to understand something. If that doesn't work, ask
 for help. It is irresponsible to neglect to use the resources that are
 available, including the support of others.
 
+## Low Stakes Questions
+
+"If you were a butterfly what color would you be?"
+
+From a formal technical perspective there is a correct way of asking a question;
+the details have been narrowed down to exact input and output with a [minimal
+reproducible
+example](https://stackoverflow.com/help/minimal-reproducible-example) and the
+difference between the desired and expected behaviour is contrasted.
+
+That style of question is good for when there is a limited domain and an
+_immediate tangible goal_, but it's not the only way of generating value. An
+open question like "what does this part do and why is it done this way?" is
+great for encouraging technical discussion and exploring previously overlooked
+ideas.
+
 # Composition Over Inheritance
 
 There's plenty of
 [material](https://en.wikipedia.org/wiki/Composition_over_inheritance) online.
 Inheritance is extremely difficult to follow, and a system like Rust's traits is
-the correct way of going about this. Especially when hitting something like the
+the correct way of going about this (having a trait which can then be
+implemented by specific types). Especially when hitting something like the
 [diamond problem](https://en.wikipedia.org/wiki/Multiple_inheritance),
 inheritance just doesn't model the world in a good way. And more importantly, it
 can become impossible to follow! Logic should be explicitly opted-in, not
@@ -161,7 +177,7 @@ If a developer needs to test a feature it should be easy to do so.
    single part can be swapped out as desired, ideally instantaneously.
  - The logs or other feedback mechanisms must be available and easy to use.
    Ideally an event streaming service like kafka will allow a developer to view
-   only what they want.
+   what they want and only what they want.
 
 # Feedback
 
@@ -412,13 +428,6 @@ enum Algorithm {
 This also has implications for a database; a fixed length type which uses
 integer comparison is handled better than a variable length type (memory issues)
 which uses a string comparison (slower).
-
-From a general ergonomics standpoint, golang's conventional error handling is
-not good because the builtin error type is an opaque string value. One must
-parse the string to find out the enumerated types of errors that can occur in
-order to handle each case appropriately. Most of the time all errors are handled
-in the same way (the operation failed overall) but in some cases this is
-important to expose for the caller.
 
 Unrepresentable states should be impossible. This is one of the reasons why C is
 bad; it's not (reasonably) possible in the language:
