@@ -16,8 +16,6 @@ available, including the support of others.
 
 ## Low Stakes Questions
 
-"If you were a butterfly what color would you be?"
-
 From a formal technical perspective there is a correct way of asking a question;
 the details have been narrowed down to exact input and output with a [minimal
 reproducible
@@ -188,8 +186,6 @@ review process - no feedback is abnormal.
 Always be open to feedback and discussion on your work. Always try to understand
 others' perspectives, and in turn, explain your perspective to them. A long
 comment is indicative of _interest_.
-
-You are not an infalliable god over your own domain.
 
 In line with the above: when giving feedback, try to be concise and write with a
 suggestive or question form. "Have you considered... ?"
@@ -398,6 +394,9 @@ verifiable quality in the first place:
  - evaluating surrounding infrastructure (misconfigured devops, etc.)
  - a comprehensive QA list and plan
 
+One can iterate on a program for a long time (with diminishing returns), and at
+some point it makes more sense to expose it to the real world.
+
 # Type System - Prefer Strong Types
 
 Prefer stronger typing over weaker typing. It prevents mistakes and is a form of
@@ -453,3 +452,62 @@ thing.type = THING_TYPE_INT;
 thing.value.thing_float = 1.0; // OOPS
 ```
 
+# UID Calculations
+
+Suppose the UID of this struct needs to be calculated for a database:
+
+```json
+{ "k_a": "v_a", "k_b": "v_b", "k_c": "v_c" }
+```
+
+### Consistency
+
+If the UID is being calculated in different places then those must give the same
+output for the same input.
+
+### Data Passthrough
+
+Finalizing a hasher state should occurs only at the end, otherwise the collision rate will increase.
+
+Prefer this:
+
+```c
+hash(obj["k_a"] + '\0' + obj["k_b"] + '\0' + obj["k_c"])
+```
+
+Instead of this (using some intermediary UID):
+
+```c
+hash(
+    hash(
+        obj["k_a"] + '\0' + obj["k_b"]
+    )
+     + '\0' + obj["k_c"]
+)
+```
+
+### Extraneous Info
+
+Information which should not be included in the UID calculation should be
+skipped! For example, suppose a field is an absolute path within some sandbox
+(temporary dir). That means that same records will have different UIDs. Skip
+info which doesn't make sense to include.
+
+### Missing Info
+
+Everything which uniquely differentiates a record must be included! Suppose `k_a` was missed. Now records with the same other fields will be upserted even if they should be treated as different records.
+
+### Unambiguity
+
+To reduce collisions the serialization of the struct before hashing should be unambiguous.
+
+Since JSON maps to C strings (null terminating), it is unambiguous to delimit the values with null bytes:
+
+```c
+hash_input_byte_array = obj["k_a"] + '\0' + obj["k_b"] + '\0' + obj["k_c"]
+```
+
+In constrast a `/` delimiter would not be ok because it could occur naturally in
+the values. It would be ambiguous whether `/` is just a part of the value or the start of a new field.
+
+If there is any ambiguity, consider just marshalling it to json. However be warned that json fields do not have a defined sorted order (and this may vary with different implementations and different records).
