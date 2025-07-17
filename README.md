@@ -361,9 +361,17 @@ Having multiple states which must be kept in sync is bug prone. If these cases,
 there should be a strong abstraction to prevent error (should set state in
 multiple places automatically).
 
-"Give someone state and they'll have a bug one day, but teach them how to
-represent state in two separate locations that have to be kept in sync and
-they'll have bugs for a lifetime" -ryg
+### Documentation
+
+Documentation should be checked into the version control system as it is the
+single source of truth. There should not be some auxiliary source of
+documentation like a Google Doc or Microsoft Loop (which will then have to be
+  kept in sync). This includes client facing docs; they should be checked in and
+  can be written in,
+  [Markdown](https://github.blog/developer-skills/github/include-diagrams-markdown-files-mermaid/),
+  [LaTeX](https://stackoverflow.com/questions/6188780/git-latex-workflow), or
+  even
+  [docx](https://stackoverflow.com/questions/22439517/view-docx-file-on-github-and-use-git-diff-on-docx-file-format).
 
 # Team Cohesion
 
