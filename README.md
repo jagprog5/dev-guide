@@ -394,7 +394,7 @@ bunch of components to get through this week. Practicality gets in the way.
 
 Testing should be done where it makes sense to do so! Anecdotally a
 disproportionate push for testing was because _surrounding or previous
-components are clearly lacking in quality_. Time might be better spent writing
+components were clearly lacking in quality_. Time might be better spent writing
 verifiable quality in the first place:
 
  - using higher level abstractions (libraries, and reduce manual memory management)
@@ -402,7 +402,7 @@ verifiable quality in the first place:
  - evaluating surrounding infrastructure (misconfigured devops, etc.)
  - a comprehensive QA list and plan
 
-One can iterate on a program for a long time (with diminishing returns), and at
+One can iterate on a program for a long time (with diminishing returns), but at
 some point it makes more sense to expose it to the real world.
 
 # Type System - Prefer Strong Types
@@ -458,6 +458,29 @@ struct Thing {
 Thing thing;
 thing.type = THING_TYPE_INT;
 thing.value.thing_float = 1.0; // OOPS
+```
+
+### Value Aliasing
+
+A common anti-pattern is to assign a value with _special meaning_. This is an
+implicit representation which is error prone!
+
+For example, suppose the number of things in a shopping cart is being
+represented. It is not possible to order 0 things (because then the order would
+simply not exist in the first place). One might be tempted to allow 0 to
+represent an error state instead.
+
+This is ok but error prone:
+
+```rust
+let num_items: u32 = 0;
+```
+
+This prevents errors and conveys more information (which the Rust compiler can
+use for memory layout optimization):
+
+```rust
+let num_items: Option<NonZeroU32> = NonZeroU32::new(0);
 ```
 
 # UID Calculations
