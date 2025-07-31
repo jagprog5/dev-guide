@@ -14,7 +14,7 @@ Put in a reasonable effort to understand something. If that doesn't work, ask
 for help. It is irresponsible to neglect to use the resources that are
 available, including the support of others.
 
-## Low Stakes Questions
+### Low Stakes Questions
 
 From a formal technical perspective there is a correct way of asking a question;
 the details have been narrowed down to exact input and output with a [minimal
@@ -154,8 +154,15 @@ rm "$FILE"      # WRONG. $FILE can be a flag like "-f". interpreted by CLI
 rm -- "$FILE"   # CORRECT. now check all tools for where this is needed
 ```
 
-All of this shell nonsense can be avoided, since os/exec'ing a subprocess
-directly passes the arguments to the tool without being interpreted.
+All of this shell nonsense can be avoided:
+ - os/exec'ing a subprocess directly passes the arguments to the tool without
+being interpreted by the shell.
+ - calling the lib API avoids any CLI related quirks (don't forget the "--" arg!)
+
+## Effort Matching
+
+If something is taking significantly more effort that it should, then it's
+likely that the wrong path is being taken. Take a step back and re-evaluate.
 
 # Ergonomics
 
@@ -163,7 +170,8 @@ It should be easy for developers to do what they need to do.
 
 Suppose there is some large tech stack being used; the whole system can't be run
 on a single developer's machine. This means that there is some environment which
-is shared between developers. There must be an explicit system so that
+is shared between developers (an individual component will be deployed which
+interacts with the whole stack). There must be an explicit system so that
 developers are not interfering with each-other. This could be as simple as a
 messaging thread.
 
@@ -232,6 +240,13 @@ less work, not more work.
 <small>(an exception to this is getters and setters, which are necessary to
 control access to data in some languages)</small>
 
+# Leaky Abstraction
+
+Implementation details shouldn't be exposed. If they are, then they can't be
+changed later (someone might be using it!). Plus it makes the interface more
+difficult to use. The most useful abstractions handle all cases while requiring
+the least amount of effort to use.
+
 # Moderation
 
 This document is intended as an augmentation, not a substitution, for your own
@@ -255,8 +270,9 @@ transformation, and processing which is specific to each source itself.
 
 It is the responsibility of each source to coax its data into the form that the
 sink is expecting. It is not the responsibility of the sink to mangle everyone's
-formats into one form - this causes too much logical burden and interleaving.
-Each source only has to handle its domain, so it keeps a clear division of where
+formats into one form - this causes too much logical burden and interleaving (in
+an extreme case a _machine learning algorithm_ was proposed to do this...). Each
+source only has to handle its domain, so it keeps a clear division of where
 logic must be applied; it allows the problem to be modularized as smaller
 clearly defined sub-problems which can be more easily handled individually.
 
