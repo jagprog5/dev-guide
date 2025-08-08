@@ -26,19 +26,24 @@ That style of question is good for when there is a limited domain and an
 _immediate tangible goal_, but it's not the only way of generating value. An
 open question like "what does this part do and why is it done this way?" is
 great for encouraging technical discussion and exploring previously overlooked
-ideas.
+ideas. Things don't have to be rigid.
 
 # Composition Over Inheritance
 
 There's plenty of
 [material](https://en.wikipedia.org/wiki/Composition_over_inheritance) online.
-Inheritance is extremely difficult to follow, and a system like Rust's traits is
+Inheritance is difficult to follow, and a system like Rust's traits is
 the correct way of going about this (having a trait which can then be
 implemented by specific types). Especially when hitting something like the
 [diamond problem](https://en.wikipedia.org/wiki/Multiple_inheritance),
 inheritance just doesn't model the world in a good way. And more importantly, it
 can become impossible to follow! Logic should be explicitly opted-in, not
 implicitly inherited.
+
+# Decision Paralysis
+
+When doing design work it's imperative to focus on the relevant subset of
+possibilities. Document the decisions and move on.
 
 # Dependencies - Reduce
 
@@ -163,6 +168,13 @@ being interpreted by the shell.
 
 If something is taking significantly more effort that it should, then it's
 likely that the wrong path is being taken. Take a step back and re-evaluate.
+Don't "tread the road less traveled", as it doesn't leverage the work that
+others have done.
+
+Though, it could be the side effect of a competitive setting, or there could be
+[hidden blockers](https://youtu.be/w3MDM0CmG-o). The important part is
+recognizing when effort isn't being matched (lest you needlessly exhaust
+yourself).
 
 # Ergonomics
 
@@ -281,7 +293,7 @@ sink. Suppose there is some processing common to all sources. Rather than
 repeating logic, put it in
 [one](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) place. However,
 this can cause problems; there must be the absolute guarantee that the logic
-will be applied to _all_ sources, including hypothetical ones.
+will be applied to _all_ sources, including all reasonably hypothetical ones.
 
 If it only applies to some of the sources, then those sources should explicitly
 opt in to that logic on their end! Otherwise, there will be logical scope creep
@@ -291,7 +303,7 @@ downstream logic which a source may not even want. And it's muddied the
 interface between source and sink.
 
 Repeating code in this way is ok; common code can be managed as a library. Each
-source can explicitly opt-in to common processing by using the library.
+source can explicitly opt-in to common processing by importing it.
 
 # Reuse Work
 
@@ -362,9 +374,8 @@ requests haphazardly!
 
 The simplest solution which fullfills requirements is the correct solution
 (axiom 2 of [axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)).
-Complexity breeds more complexity, as it requires a larger mental load to break
-apart a large solution and describe it in a better way before changes can be
-made. 
+Complexity breeds complexity, as it requires a larger mental load to break apart
+a complex solution and describe it in a better way.
 
 In the short term, it is always easier to staple a feature on top of an existing
 project. It is harder, but sometime necessary, to rethink the existing solution
