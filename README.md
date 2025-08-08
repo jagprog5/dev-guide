@@ -382,6 +382,32 @@ project. It is harder, but sometime necessary, to rethink the existing solution
 in a way which better integrates with a feature. Entropy must be actively
 opposed.
 
+### Exceptions
+
+... are bad. Do not use.
+
+There's tons of [footguns](https://en.wiktionary.org/wiki/footgun#:~:text=footgun%20(plural%20footguns),shoot%20themselves%20in%20the%20foot.):
+
+ - throwing an exception while unwinding the stack crashes the program
+ - it is implicit control flow which the caller might not handle (should be explicit)
+ - it complicates the object lifecycle. Creating a [partially
+   constructed](https://rollbar.com/blog/throw-exceptions-in-cpp-constructors/)
+   object is dangerous
+ - don't forget that move ctors should always be noexcept!
+
+There's so much nonsense and niche rules. Compare the above mental load with how
+Rust handles erroneous conditions:
+
+```rust
+let thing: Result<Value, Error> = Value::might_value_ctor();
+// or
+let thing: Value = Value::might_value_ctor()?;
+```
+
+That is all there should be! Explicitly, it either returns the constructed
+object, or it doesn't. This is the simplest way of solving the problem, so its
+the correct one.
+
 # State Synchronization
 
 Having multiple states which must be kept in sync is bug prone. If these cases,
@@ -393,8 +419,7 @@ multiple places automatically).
 Documentation should be checked into the version control system as it is the
 single source of truth. There should not be some auxiliary source of
 documentation like a Google Doc or Microsoft Loop (which will then have to be
-  kept in sync). This includes client facing docs; they should be checked in and
-  can be written in,
+  kept in sync). They should be checked in and can be written in,
   [Markdown](https://github.blog/developer-skills/github/include-diagrams-markdown-files-mermaid/),
   [LaTeX](https://stackoverflow.com/questions/6188780/git-latex-workflow), or
   even
