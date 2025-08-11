@@ -3,8 +3,7 @@
 # Developer Guidelines
 
 
-Organized alphabetically. Lists guidelines for a developer - including technical
-and non technical subjects.
+Broad technical and non technical guidelines. Organized alphabetically.
 
 </center>
 
@@ -16,7 +15,7 @@ available, including the support of others.
 
 ### Low Stakes Questions
 
-From a formal technical perspective there is a correct way of asking a question;
+From a technical perspective there is a correct way of asking a question;
 the details have been narrowed down to exact input and output with a [minimal
 reproducible
 example](https://stackoverflow.com/help/minimal-reproducible-example) and the
@@ -25,8 +24,8 @@ difference between the desired and expected behaviour is contrasted.
 That style of question is good for when there is a limited domain and an
 _immediate tangible goal_, but it's not the only way of generating value. An
 open question like "what does this part do and why is it done this way?" is
-great for encouraging technical discussion and exploring previously overlooked
-ideas. Things don't have to be rigid.
+great for technical discussion and is a lot less work. Things don't have to be
+rigid.
 
 # Composition Over Inheritance
 
@@ -42,8 +41,13 @@ implicitly inherited.
 
 # Decision Paralysis
 
-When doing design work it's imperative to focus on the relevant subset of
-possibilities. Document the decisions and move on.
+Design work necessitates a focus on the relevant subset of
+possibilities. Document decisions and move on.
+
+### Over Abstraction
+
+If there is only one realistic implementor of an interface, then that interface
+should not be created.
 
 # Dependencies - Reduce
 
@@ -216,10 +220,9 @@ Once something starts getting used everywhere, its design gets locked in place
 pretty fast. All the dependees needs to be updated, and good luck if its
 deployed on premise. There needs to be a plan to support forwards compatibility
 before things go out. This could be something as simple as adding a version
-field to schemas or leaving future placeholders in library API. It's simple,
-costs very little, but pays dividends.
+field to schemas or leaving future placeholders in library API.
 
-# Function Too Small
+# Fragmentation
 
 Here a function creates a resty (http) client request and sets a token. The
 returned instance can then be used to finalize the details of the request and
@@ -234,8 +237,9 @@ func (r *Redacted) r() *resty.Request {
 ```
 
 This might seem innocent enough. Maybe it would make sense if this one small
-section is repeated numerous times. But otherwise, good luck reading through
-code that's 5+ layers deep of tiny abstractions! It can become impossible.
+section is repeated numerous times. But otherwise, this function is too small.
+Good luck reading through code that's littered with tiny functions!
+Obfuscation is a pernicious art form.
 
 Here's an extreme example:
 
@@ -246,11 +250,12 @@ func ToPointer[V any](value V) *V {
 ```
 
 This is only a hindrance since now more mental load is required to map to what
-the author wrote instead of just writing: `&value`. Abstractions should cause
-less work, not more work.
+the author wrote instead of just writing: `&value`. It's an unwillingness to
+adapt to the surrounding code base or ecosystem.
 
-<small>(an exception to this is getters and setters, which are necessary to
-control access to data in some languages)</small>
+Abstractions should cause less work, not more work. They should map to tangible
+steps of a procedure which can be easily thought about. This preserves
+readability. 
 
 # Leaky Abstraction
 
@@ -293,7 +298,7 @@ sink. Suppose there is some processing common to all sources. Rather than
 repeating logic, put it in
 [one](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) place. However,
 this can cause problems; there must be the absolute guarantee that the logic
-will be applied to _all_ sources, including all reasonably hypothetical ones.
+will be applied to _all_ sources, including all reasonable hypothetical ones.
 
 If it only applies to some of the sources, then those sources should explicitly
 opt in to that logic on their end! Otherwise, there will be logical scope creep
@@ -399,19 +404,30 @@ There's so much nonsense and niche rules. Compare the above mental load with how
 Rust handles erroneous conditions:
 
 ```rust
-let thing: Result<Value, Error> = Value::might_value_ctor();
+let thing: Result<Value, Error> = Value::might_err_ctor();
 // or
-let thing: Value = Value::might_value_ctor()?;
+let thing: Value = Value::might_err_ctor()?;
 ```
 
 That is all there should be! Explicitly, it either returns the constructed
-object, or it doesn't. This is the simplest way of solving the problem, so its
-the correct one.
+object, or it doesn't. This is the simplest representation that solves the
+problem, so its the correct one.
+
+# Ownership
+
+Projects should have owners. From a management point of view, there is a point
+of contact who has responsibility. From a technical perspective, context
+switching is more work.
+
+That being said, it is _ok_ for there to be overlap; it reduces the [bus
+factor](https://activecollab.com/blog/project-management/bus-factor) and helps
+team cohesion. However, the project owner should be apprised and ideally review
+changes.
 
 # State Synchronization
 
-Having multiple states which must be kept in sync is bug prone. If these cases,
-there should be a strong abstraction to prevent error (should set state in
+Having multiple states which must be kept in sync is bug prone. In these cases,
+there should be an abstraction to prevent error (should set state in
 multiple places automatically).
 
 ### Documentation
@@ -452,14 +468,15 @@ verifiable quality in the first place:
  - using higher level abstractions (libraries, and reduce manual memory management)
  - rethinking complexity in terms of axiomatic design
  - evaluating surrounding infrastructure (misconfigured devops, etc.)
- - a comprehensive QA list and plan
+ - a comprehensive QA list and plan (the requester of a feature should QA!)
 
 One can iterate on a program for a long time (with diminishing returns), but at
-some point it makes more sense to expose it to the real world.
+some point it makes more sense to expose it to the real world. There are some
+things which tests just won't catch.
 
 # Type System - Prefer Strong Types
 
-Prefer stronger typing over weaker typing. It prevents mistakes and is a form of
+Prefer strong typing over weak typing. It prevents mistakes and is a form of
 documentation.
 
 
@@ -572,13 +589,21 @@ hash(
 ### Extraneous Info
 
 Information which should not be included in the UID calculation should be
-skipped! For example, suppose a field is an absolute path within some sandbox
-(temporary dir). That means that same records will have different UIDs. Skip
-info which doesn't make sense to include.
+skipped! Suppose a field is an absolute path within some sandbox
+(temporary dir):
+
+**`/sandbox-path-abc-123`**/path/to/record  
+**`/sandbox-path-cba-321`**/path/to/record
+
+The sandbox path shouldn't be included in the uid calculation, since it's
+independent of the record's content. Skip info which doesn't make sense to
+include.
 
 ### Missing Info
 
-Everything which uniquely differentiates a record must be included! Suppose `k_a` was missed. Now records with the same other fields will be upserted even if they should be treated as different records.
+Everything which uniquely differentiates a record must be included! Suppose
+`k_a` was missed from the calculation. Now records with the same other fields
+will be upserted even if they should be treated as different records.
 
 ### Unambiguity
 
