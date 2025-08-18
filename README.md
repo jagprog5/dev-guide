@@ -168,7 +168,7 @@ All of this shell nonsense can be avoided:
 being interpreted by the shell.
  - calling the lib API avoids any CLI related quirks (don't forget the "--" arg!)
 
-## Effort Matching
+# Effort Matching
 
 If something is taking significantly more effort that it should, then it's
 likely that the wrong path is being taken. Take a step back and re-evaluate.
@@ -222,6 +222,10 @@ deployed on premise. There needs to be a plan to support forwards compatibility
 before things go out. This could be something as simple as adding a version
 field to schemas or leaving future placeholders in library API.
 
+### Horizontal Scalability
+
+Have a plan for scalability. It could be as simple as hash based sharding.
+
 # Fragmentation
 
 Here a function creates a resty (http) client request and sets a token. The
@@ -271,12 +275,10 @@ thinking. Understand the situation and use your judgment.
 
 # Modularity
 
-There should be as little coupling between features as possible (axiom 1 of
-[axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)).
-
-Loosely coupled components linked by well defined interfaces is a must; bugs or
-quality issues can then be isolated along boundaries. If the interface is poorly
-defined, then all components which depend on it will suffer.
+Loosely coupled components linked by well defined interfaces is a must; bugs can
+then be isolated along boundaries (and if a component is bad it can easily be
+replaced). If the interface is poorly defined, then all components which depend
+on it will suffer.
 
 ### Requirements for Centralization
 
@@ -297,8 +299,8 @@ There may be the temptation to centralize some of the logical processing to the
 sink. Suppose there is some processing common to all sources. Rather than
 repeating logic, put it in
 [one](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) place. However,
-this can cause problems; there must be the absolute guarantee that the logic
-will be applied to _all_ sources, including all reasonable hypothetical ones.
+this can cause problems; there must be the guarantee that the logic will be
+applied to _all_ sources, including all reasonable hypothetical ones.
 
 If it only applies to some of the sources, then those sources should explicitly
 opt in to that logic on their end! Otherwise, there will be logical scope creep
@@ -309,6 +311,18 @@ interface between source and sink.
 
 Repeating code in this way is ok; common code can be managed as a library. Each
 source can explicitly opt-in to common processing by importing it.
+
+# Parsimoniety
+
+The simplest solution which fullfills requirements is the correct solution
+(axiom 2 of [axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)).
+Complexity breeds complexity, as it requires a larger mental load to break apart
+a complex solution and describe it in a better way.
+
+In the short term, it is always easier to staple a feature on top of an existing
+project. It is harder, but sometime necessary, to rethink the existing solution
+in a way which better integrates with a feature. Entropy must be actively
+opposed.
 
 # Reuse Work
 
@@ -375,18 +389,6 @@ happen here then it can happen in more difficult cases as well. Take time on
 reviews, spend effort to understand the context, and don't approve merge
 requests haphazardly!
 
-# Seek Parsimoniety (Occam's razor)
-
-The simplest solution which fullfills requirements is the correct solution
-(axiom 2 of [axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)).
-Complexity breeds complexity, as it requires a larger mental load to break apart
-a complex solution and describe it in a better way.
-
-In the short term, it is always easier to staple a feature on top of an existing
-project. It is harder, but sometime necessary, to rethink the existing solution
-in a way which better integrates with a feature. Entropy must be actively
-opposed.
-
 ### Exceptions
 
 ... are bad. Do not use.
@@ -421,8 +423,9 @@ switching is more work.
 
 That being said, it is _ok_ for there to be overlap; it reduces the [bus
 factor](https://activecollab.com/blog/project-management/bus-factor) and helps
-team cohesion. However, the project owner should be apprised and ideally review
-changes.
+team cohesion. Ownership does _not_ mean siloing; helping out across projects
+should be encouraged as long as primary responsibilities are satisfied. However,
+the project owner should be apprised and ideally review proposed changes.
 
 # State Synchronization
 
@@ -440,6 +443,15 @@ documentation like a Google Doc or Microsoft Loop (which will then have to be
   [LaTeX](https://stackoverflow.com/questions/6188780/git-latex-workflow), or
   even
   [docx](https://stackoverflow.com/questions/22439517/view-docx-file-on-github-and-use-git-diff-on-docx-file-format).
+
+### Data Transfer Objects
+
+Suppose there is a codebase which has been fractured into multiple languages. Along the borders of these programs, data transfer objects (DTOs) are encoded and sent through the wire. The expected schema on the sending and receiving ends need to be kept in sync.
+
+Because of the language barrier, it's tempting to simply redefine (copy) the DTO on
+both sides (and keep them in sync). A better mechanism defines the type in only one place, and everywhere that needs it can then import it, or use auto generate bindings to the language of choice. Ideally the entire code base consist of one language; lint time feedback shows dependents.
+
+This prevents entropy from taking hold. It's hard to make changes, let alone changes which harmonize with the rest of the code base, if it's difficult to find what even uses it!
 
 # Team Cohesion
 
@@ -466,7 +478,7 @@ components were clearly lacking in quality_. Time might be better spent writing
 verifiable quality in the first place:
 
  - using higher level abstractions (libraries, and reduce manual memory management)
- - rethinking complexity in terms of axiomatic design
+ - rethinking complexity in terms of [axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)
  - evaluating surrounding infrastructure (misconfigured devops, etc.)
  - a comprehensive QA list and plan (the requester of a feature should QA!)
 
@@ -552,70 +564,3 @@ use for memory layout optimization):
 let num_items: Option<NonZeroU32> = NonZeroU32::new(0);
 ```
 
-# UID Calculations
-
-Suppose the UID of this struct needs to be calculated for a database:
-
-```json
-{ "k_a": "v_a", "k_b": "v_b", "k_c": "v_c" }
-```
-
-### Consistency
-
-If the UID is being calculated in different places then those must give the same
-output for the same input.
-
-### Data Passthrough
-
-Finalizing a hasher state should occurs only at the end, otherwise the collision rate will increase.
-
-Prefer this:
-
-```c
-hash(obj["k_a"] + '\0' + obj["k_b"] + '\0' + obj["k_c"])
-```
-
-Instead of this (using some intermediary UID):
-
-```c
-hash(
-    hash(
-        obj["k_a"] + '\0' + obj["k_b"]
-    )
-     + '\0' + obj["k_c"]
-)
-```
-
-### Extraneous Info
-
-Information which should not be included in the UID calculation should be
-skipped! Suppose a field is an absolute path within some sandbox
-(temporary dir):
-
-**`/sandbox-path-abc-123`**/path/to/record  
-**`/sandbox-path-cba-321`**/path/to/record
-
-The sandbox path shouldn't be included in the uid calculation, since it's
-independent of the record's content. Skip info which doesn't make sense to
-include.
-
-### Missing Info
-
-Everything which uniquely differentiates a record must be included! Suppose
-`k_a` was missed from the calculation. Now records with the same other fields
-will be upserted even if they should be treated as different records.
-
-### Unambiguity
-
-To reduce collisions the serialization of the struct before hashing should be unambiguous.
-
-Since JSON maps to C strings (null terminating), it is unambiguous to delimit the values with null bytes:
-
-```c
-hash_input_byte_array = obj["k_a"] + '\0' + obj["k_b"] + '\0' + obj["k_c"]
-```
-
-In constrast a `/` delimiter would not be ok because it could occur naturally in
-the values. It would be ambiguous whether `/` is just a part of the value or the start of a new field.
-
-If there is any ambiguity, consider just marshalling it to json. However be warned that json fields do not have a defined sorted order (and this may vary with different implementations and different records).
