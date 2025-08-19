@@ -312,10 +312,26 @@ interface between source and sink.
 Repeating code in this way is ok; common code can be managed as a library. Each
 source can explicitly opt-in to common processing by importing it.
 
+# Naming
+
+Names should be related to the thing being named. A violating example: do you
+know what a [Class
+K](https://www.ccohs.ca/oshanswers/safety_haz/fire_extinguishers.html) fire is?
+Of course not! A better name would be "Kitchen Fire". Otherwise there is an
+arbitrary mapping which needs to be memorized between the name and the thing
+being named.
+
+Sometimes that doesn't work because there isn't a clearly identifiable division
+between the things. For example, if naming operating system versions, the
+difference between them can be considered an arbitrary collection of unrelated
+things which can't easily be named. In this case consider following [Ubuntu's
+Naming
+Convention](https://en.wikipedia.org/wiki/Ubuntu_version_history#Naming_convention)
+(code names).
+
 # Parsimoniety
 
-The simplest solution which fullfills requirements is the correct solution
-(axiom 2 of [axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)).
+The simplest solution which fullfills requirements is the correct solution.
 Complexity breeds complexity, as it requires a larger mental load to break apart
 a complex solution and describe it in a better way.
 
@@ -323,6 +339,32 @@ In the short term, it is always easier to staple a feature on top of an existing
 project. It is harder, but sometime necessary, to rethink the existing solution
 in a way which better integrates with a feature. Entropy must be actively
 opposed.
+
+### Exceptions
+
+... are bad. Do not use.
+
+There's tons of [footguns](https://en.wiktionary.org/wiki/footgun#:~:text=footgun%20(plural%20footguns),shoot%20themselves%20in%20the%20foot.):
+
+ - throwing an exception while unwinding the stack crashes the program
+ - it is implicit control flow which the caller might not handle (should be explicit)
+ - it complicates the object lifecycle. Creating a [partially
+   constructed](https://rollbar.com/blog/throw-exceptions-in-cpp-constructors/)
+   object is dangerous
+ - don't forget that move ctors should always be noexcept!
+
+There's so much nonsense and niche rules. Compare the above mental load with how
+Rust handles erroneous conditions:
+
+```rust
+let thing: Result<Value, Error> = Value::might_err_ctor();
+// or
+let thing: Value = Value::might_err_ctor()?;
+```
+
+That is all there should be! Explicitly, it either returns the constructed
+object, or it doesn't. This is the simplest representation that solves the
+problem, so its the correct one.
 
 # Reuse Work
 
@@ -389,31 +431,6 @@ happen here then it can happen in more difficult cases as well. Take time on
 reviews, spend effort to understand the context, and don't approve merge
 requests haphazardly!
 
-### Exceptions
-
-... are bad. Do not use.
-
-There's tons of [footguns](https://en.wiktionary.org/wiki/footgun#:~:text=footgun%20(plural%20footguns),shoot%20themselves%20in%20the%20foot.):
-
- - throwing an exception while unwinding the stack crashes the program
- - it is implicit control flow which the caller might not handle (should be explicit)
- - it complicates the object lifecycle. Creating a [partially
-   constructed](https://rollbar.com/blog/throw-exceptions-in-cpp-constructors/)
-   object is dangerous
- - don't forget that move ctors should always be noexcept!
-
-There's so much nonsense and niche rules. Compare the above mental load with how
-Rust handles erroneous conditions:
-
-```rust
-let thing: Result<Value, Error> = Value::might_err_ctor();
-// or
-let thing: Value = Value::might_err_ctor()?;
-```
-
-That is all there should be! Explicitly, it either returns the constructed
-object, or it doesn't. This is the simplest representation that solves the
-problem, so its the correct one.
 
 # Ownership
 
