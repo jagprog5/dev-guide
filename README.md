@@ -3,7 +3,8 @@
 # Developer Guidelines
 
 
-Broad technical and non technical guidelines. Organized alphabetically.
+Broad technical and non technical guidelines. Top level headers organized
+alphabetically.
 
 </center>
 
@@ -26,18 +27,6 @@ _immediate tangible goal_, but it's not the only way of generating value. An
 open question like "what does this part do and why is it done this way?" is
 great for technical discussion and is a lot less work. Things don't have to be
 rigid.
-
-# Composition Over Inheritance
-
-There's plenty of
-[material](https://en.wikipedia.org/wiki/Composition_over_inheritance) online.
-Inheritance is difficult to follow, and a system like Rust's traits is
-the correct way of going about this (having a trait which can then be
-implemented by specific types). Especially when hitting something like the
-[diamond problem](https://en.wikipedia.org/wiki/Multiple_inheritance),
-inheritance just doesn't model the world in a good way. And more importantly, it
-can become impossible to follow! Logic should be explicitly opted-in, not
-implicitly inherited.
 
 # Decision Paralysis
 
@@ -168,6 +157,11 @@ All of this shell nonsense can be avoided:
 being interpreted by the shell.
  - calling the lib API avoids any CLI related quirks (don't forget the "--" arg!)
 
+Shell scripts are _generally the wrong tool for the job_. It _is possible_ to
+write a shell program of equal quality to other methods, just the same way that
+hand written assembly could be written with equal quality. Theoretically yes,
+but practically no.
+
 # Effort Matching
 
 If something is taking significantly more effort that it should, then it's
@@ -261,13 +255,6 @@ Abstractions should cause less work, not more work. They should map to tangible
 steps of a procedure which can be easily thought about. This preserves
 readability. 
 
-# Leaky Abstraction
-
-Implementation details shouldn't be exposed. If they are, then they can't be
-changed later (someone might be using it!). Plus it makes the interface more
-difficult to use. The most useful abstractions handle all cases while requiring
-the least amount of effort to use.
-
 # Moderation
 
 This document is intended as an augmentation, not a substitution, for your own
@@ -280,7 +267,31 @@ then be isolated along boundaries (and if a component is bad it can easily be
 replaced). If the interface is poorly defined, then all components which depend
 on it will suffer.
 
-### Requirements for Centralization
+### Overburdened Source
+
+Suppose there's an application which sends some data to an output. Unfortunately
+it exists in a rigid and demanding ecosystem; the interface is complicated
+because it needs to satisfy everyone's needs:
+
+```
+$ ./redacted --help
+Usage of ./redacted:
+  -compatability-flag-v1
+        compatability mode for client 1 (sends output with other schema)
+  -compatability-flag-v2
+        compatability mode for client 2 (sends output to ingestion server)
+  ...
+  -compatability-flag-v3
+        compatability mode for client n (sends output to stdout with other schema)
+  -version
+        Prints application version
+```
+
+Instead, the application should send its output in _one way_. It is then the
+responsibility of whatever sits on the other side of the interface to do
+whatever it needs to for that data.
+
+### Overburdened Sink
 
 Suppose there are many sources and one sink. This could be over a network, or
 just following the flow through some code. The sources all do different things.
@@ -292,8 +303,10 @@ sink is expecting. It is not the responsibility of the sink to mangle everyone's
 formats into one form - this causes too much logical burden and interleaving (in
 an extreme case a _machine learning algorithm_ was proposed to do this...). Each
 source only has to handle its domain, so it keeps a clear division of where
-logic must be applied; it allows the problem to be modularized as smaller
-clearly defined sub-problems which can be more easily handled individually.
+logic must be applied; it allows the problem to be modularized as sub-problems
+which can be more easily handled individually.
+
+### Requirements for Centralization
 
 There may be the temptation to centralize some of the logical processing to the
 sink. Suppose there is some processing common to all sources. Rather than
@@ -306,18 +319,29 @@ If it only applies to some of the sources, then those sources should explicitly
 opt in to that logic on their end! Otherwise, there will be logical scope creep
 at the sink. e.g. "This field should be lowercase. One of the sources did not
 follow this, so I'll lowercase it for everyone". Now there is implicit
-downstream logic which a source may not even want. And it's muddied the
-interface between source and sink.
+downstream logic which a source is forced to use. And it's muddied the interface
+between source and sink.
 
 Repeating code in this way is ok; common code can be managed as a library. Each
 source can explicitly opt-in to common processing by importing it.
+
+### Composition Over Inheritance
+
+The above "Requirements for Centralization" **is the same reasoning for why
+inheritance is bad**. Logic should be explicitly opted-in, not implicitly
+inherited (and forced); implicit code flow is not readable. Rust's traits (or
+equivalent) is the correct way of writing code (having traits which are
+implemented by types, with all function calls being explicit). Especially when
+hitting something like the [diamond
+problem](https://en.wikipedia.org/wiki/Multiple_inheritance), inheritance just
+doesn't model the world in a good way.
 
 # Naming
 
 Names should be related to the thing being named. A violating example: do you
 know what a [Class
-K](https://www.ccohs.ca/oshanswers/safety_haz/fire_extinguishers.html) fire is?
-Of course not! A better name would be "Kitchen Fire". Otherwise there is an
+D](https://www.ccohs.ca/oshanswers/safety_haz/fire_extinguishers.html) fire is?
+Of course not! A better name would be "Metal Fire". Otherwise there is an
 arbitrary mapping which needs to be memorized between the name and the thing
 being named.
 
@@ -329,6 +353,31 @@ Naming
 Convention](https://en.wikipedia.org/wiki/Ubuntu_version_history#Naming_convention)
 (code names).
 
+# Ownership
+
+Projects should have owners. From a management point of view there is a point
+of contact who has responsibility. From a technical perspective context
+switching is more work.
+
+That being said, it is _ok_ for there to be overlap; it reduces the [bus
+factor](https://activecollab.com/blog/project-management/bus-factor), encourages
+team cohesion, and allows people to better leverage their expertise. Ownership
+does _not_ mean siloing; helping out across projects should be encouraged as
+long as responsibilities aren't neglected. Just ensure the project owner is
+apprised.
+
+### Hierarchy
+
+Project owners existing implies an organizational hierarchy. It is the
+responsibility of leadership to articulate expectations, and it is the
+responsibility of project owners to clarify and _provide feedback_ on those
+expectations before implementation.
+
+Generally, functional requirements should flow down the hierarchy and design
+parameters should flow up the hierarchy. Assuming specialization, leadership
+should not be involved in design parameters and project owners should not be
+involved in functional requirements.
+
 # Parsimoniety
 
 The simplest solution which fullfills requirements is the correct solution.
@@ -339,6 +388,13 @@ In the short term, it is always easier to staple a feature on top of an existing
 project. It is harder, but sometime necessary, to rethink the existing solution
 in a way which better integrates with a feature. Entropy must be actively
 opposed.
+
+### Leaky Abstraction
+
+Implementation details shouldn't be exposed. If they are, then they can't be
+changed later (someone might be using it!). Plus it makes the interface more
+difficult to use. The most useful abstractions handle all cases while requiring
+the least amount of effort to use.
 
 ### Exceptions
 
@@ -365,6 +421,15 @@ let thing: Value = Value::might_err_ctor()?;
 That is all there should be! Explicitly, it either returns the constructed
 object, or it doesn't. This is the simplest representation that solves the
 problem, so its the correct one.
+
+### SQL over NoSQL
+
+NoSQL does have a niche. If the data is truly unstructured then it's
+suitable for the task. But verify: is this true? Or has there not been enough
+planning on the schemas to be stored. Ensure that's it's not "kicking the can
+down the road" by dumping whatever data into a NoSQL db, as this complicates
+logic in the future. Ensure that the underlying type used to represent the data
+is both explicit and the most restrictive model that works.
 
 # Reuse Work
 
@@ -431,19 +496,6 @@ happen here then it can happen in more difficult cases as well. Take time on
 reviews, spend effort to understand the context, and don't approve merge
 requests haphazardly!
 
-
-# Ownership
-
-Projects should have owners. From a management point of view, there is a point
-of contact who has responsibility. From a technical perspective, context
-switching is more work.
-
-That being said, it is _ok_ for there to be overlap; it reduces the [bus
-factor](https://activecollab.com/blog/project-management/bus-factor) and helps
-team cohesion. Ownership does _not_ mean siloing; helping out across projects
-should be encouraged as long as primary responsibilities are satisfied. However,
-the project owner should be apprised and ideally review proposed changes.
-
 # State Synchronization
 
 Having multiple states which must be kept in sync is bug prone. In these cases,
@@ -466,9 +518,7 @@ documentation like a Google Doc or Microsoft Loop (which will then have to be
 Suppose there is a codebase which has been fractured into multiple languages. Along the borders of these programs, data transfer objects (DTOs) are encoded and sent through the wire. The expected schema on the sending and receiving ends need to be kept in sync.
 
 Because of the language barrier, it's tempting to simply redefine (copy) the DTO on
-both sides (and keep them in sync). A better mechanism defines the type in only one place, and everywhere that needs it can then import it, or use auto generate bindings to the language of choice. Ideally the entire code base consist of one language; lint time feedback shows dependents.
-
-This prevents entropy from taking hold. It's hard to make changes, let alone changes which harmonize with the rest of the code base, if it's difficult to find what even uses it!
+both sides (and keep them in sync). A better mechanism defines the type in only one place, and everywhere that needs it can then import it, or use auto generate bindings to the language of choice. Ideally the entire code base consist of one language; lint time feedback shows dependents. It's hard to make changes, let alone changes which harmonize with the rest of the code base if it's difficult to find what even uses it!
 
 # Team Cohesion
 
@@ -514,7 +564,7 @@ struct Bytes(pub u32) // NOT BITS
 ```
 
 Especially when dealing with variance in the data. Only valid options should be
-representable:
+representable (parsimoniety):
 
 ```rust
 // don't represent as string!
