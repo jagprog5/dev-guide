@@ -157,10 +157,9 @@ All of this shell nonsense can be avoided:
 being interpreted by the shell.
  - calling the lib API avoids any CLI related quirks (don't forget the "--" arg!)
 
-Shell scripts are _generally the wrong tool for the job_. It _is possible_ to
-write a shell program of equal quality to other methods, just the same way that
-hand written assembly could be written with equal quality. Theoretically yes,
-but practically no.
+Use the right tool for the job. It _is possible_ to write a shell program of
+equal quality to other methods, just the same way that hand written assembly
+could be written with equal quality. Theoretically yes, but practically no.
 
 # Effort Matching
 
@@ -257,8 +256,8 @@ readability.
 
 # Moderation
 
-This document is intended as an augmentation, not a substitution, for your own
-thinking. Understand the situation and use your judgment.
+This document is intended as a guide, not a substitution, for your own thinking.
+Understand the situation and use your judgment.
 
 # Modularity
 
@@ -270,26 +269,35 @@ on it will suffer.
 ### Overburdened Source
 
 Suppose there's an application which sends some data to an output. Unfortunately
-it exists in a rigid and demanding ecosystem; the interface is complicated
-because it needs to satisfy everyone's needs:
+it exists in a demanding ecosystem; the interface is complicated because it
+needs to satisfy everyone's needs and maintain backwards compatibility:
 
 ```
 $ ./redacted --help
 Usage of ./redacted:
-  -compatability-flag-v1
-        compatability mode for client 1 (sends output with other schema)
-  -compatability-flag-v2
-        compatability mode for client 2 (sends output to ingestion server)
+  -compatibility-flag-v1
+        compatibility mode for client 1 (sends output with other schema)
+  -compatibility-flag-v2
+        compatibility mode for client 2 (sends output to ingestion server)
   ...
-  -compatability-flag-v3
-        compatability mode for client n (sends output to stdout with other schema)
+  -compatibility-flag-vN
+        compatibility mode for client N (do other things)
   -version
         Prints application version
 ```
 
-Instead, the application should send its output in _one way_. It is then the
-responsibility of whatever sits on the other side of the interface to do
-whatever it needs to for that data.
+Sure, there are ways of managing this complexity:
+
+ - the project could be forked, but now multiple forks need to be kept up to
+   date with bug fixes
+ - an interface for "send output" could be created, with runtime or compile-time
+   flags used to swap out the underlying implementation
+
+But that shouldn't be necessary. There should be an enforced standard for
+sending the output in _one way_. It is then the responsibility of whatever sits
+on the other side of the interface to do whatever it needs to for that data. If
+the project is future proofed (schema versioning + deprecation strategy), then
+this compatibility matrix should not be necessary.
 
 ### Overburdened Sink
 
@@ -300,13 +308,12 @@ transformation, and processing which is specific to each source itself.
 
 It is the responsibility of each source to coax its data into the form that the
 sink is expecting. It is not the responsibility of the sink to mangle everyone's
-formats into one form - this causes too much logical burden and interleaving (in
-an extreme case a _machine learning algorithm_ was proposed to do this...). Each
-source only has to handle its domain, so it keeps a clear division of where
+formats into one form - this causes too much logical burden and interleaving.
+Each source only has to handle its domain, so it keeps a clear division of where
 logic must be applied; it allows the problem to be modularized as sub-problems
 which can be more easily handled individually.
 
-### Requirements for Centralization
+#### Requirements for Centralization
 
 There may be the temptation to centralize some of the logical processing to the
 sink. Suppose there is some processing common to all sources. Rather than
@@ -345,13 +352,19 @@ Of course not! A better name would be "Metal Fire". Otherwise there is an
 arbitrary mapping which needs to be memorized between the name and the thing
 being named.
 
-Sometimes that doesn't work because there isn't a clearly identifiable division
-between the things. For example, if naming operating system versions, the
-difference between them can be considered an arbitrary collection of unrelated
-things which can't easily be named. In this case consider following [Ubuntu's
-Naming
+Code words are used in settings where the layman shouldn't be informed. Like
+"code black" in a hospital is said to deliberately obfuscate and prevent panic.
+That's not applicable to communication in engineering.
+
+Similarly, although acronyms do have a use, they are a form of obfuscation which
+should be avoided.
+
+Sometimes there isn't an obvious name to choose. For example, if naming
+operating system versions, the difference between them can be considered an
+arbitrary collection of unrelated things which can't be named easily. In this
+case consider following [Ubuntu's Naming
 Convention](https://en.wikipedia.org/wiki/Ubuntu_version_history#Naming_convention)
-(code names).
+(alphabetical code names).
 
 # Ownership
 
@@ -378,9 +391,9 @@ parameters should flow up the hierarchy. Assuming specialization, leadership
 should not be involved in design parameters and project owners should not be
 involved in functional requirements.
 
-# Parsimoniety
+# Parsimony
 
-The simplest solution which fullfills requirements is the correct solution.
+The simplest solution which fulfills requirements is the correct solution.
 Complexity breeds complexity, as it requires a larger mental load to break apart
 a complex solution and describe it in a better way.
 
@@ -409,7 +422,7 @@ There's tons of [footguns](https://en.wiktionary.org/wiki/footgun#:~:text=footgu
    object is dangerous
  - don't forget that move ctors should always be noexcept!
 
-There's so much nonsense and niche rules. Compare the above mental load with how
+There's so many pitfalls! Compare the above mental load with how
 Rust handles erroneous conditions:
 
 ```rust
@@ -419,8 +432,8 @@ let thing: Value = Value::might_err_ctor()?;
 ```
 
 That is all there should be! Explicitly, it either returns the constructed
-object, or it doesn't. This is the simplest representation that solves the
-problem, so its the correct one.
+object, or it doesn't. This is the simplest representation that
+solves the problem, so it's the correct one.
 
 ### SQL over NoSQL
 
@@ -489,12 +502,10 @@ func (r *Redacted) do_something(repo string) error {
 }
 ```
 
-Writing quality the first time is easier then going back and fixing things up.
-Fortunately this case is easy to fix (it's known what the original intent was,
-and it can be fixed without having unforeseen side effects), but if it can
-happen here then it can happen in more difficult cases as well. Take time on
-reviews, spend effort to understand the context, and don't approve merge
-requests haphazardly!
+Writing quality the first time is easier than going back and fixing things up.
+Fortunately this case is easy to fix, but if it can happen here then it can
+happen in more complicated cases as well. Take time on reviews, spend effort to
+understand the context, and don't approve merge requests haphazardly!
 
 # State Synchronization
 
@@ -515,10 +526,18 @@ documentation like a Google Doc or Microsoft Loop (which will then have to be
 
 ### Data Transfer Objects
 
-Suppose there is a codebase which has been fractured into multiple languages. Along the borders of these programs, data transfer objects (DTOs) are encoded and sent through the wire. The expected schema on the sending and receiving ends need to be kept in sync.
+Suppose there is a codebase which has been fractured into multiple languages.
+Along the borders of these programs, data transfer objects (DTOs) are encoded
+and sent through the wire. The expected schema on the sending and receiving ends
+need to be kept in sync.
 
-Because of the language barrier, it's tempting to simply redefine (copy) the DTO on
-both sides (and keep them in sync). A better mechanism defines the type in only one place, and everywhere that needs it can then import it, or use auto generate bindings to the language of choice. Ideally the entire code base consist of one language; lint time feedback shows dependents. It's hard to make changes, let alone changes which harmonize with the rest of the code base if it's difficult to find what even uses it!
+Because of the language barrier, it's tempting to simply redefine (copy) the DTO
+on both sides (and keep them in sync). A better mechanism defines the type in
+only one place, and everywhere that needs it can then import it, or use auto
+generate bindings to the language of choice. Ideally the entire code base
+consist of one language; lint time feedback shows dependents. It's hard to make
+changes, let alone changes which harmonize with the rest of the code base if
+it's difficult to find what even uses it!
 
 # Team Cohesion
 
@@ -545,13 +564,56 @@ components were clearly lacking in quality_. Time might be better spent writing
 verifiable quality in the first place:
 
  - using higher level abstractions (libraries, and reduce manual memory management)
- - rethinking complexity in terms of [axiomatic design](https://en.wikipedia.org/wiki/Axiomatic_design)
+ - rethinking complexity in terms of [axiomatic
+   design](https://en.wikipedia.org/wiki/Axiomatic_design)
  - evaluating surrounding infrastructure (misconfigured devops, etc.)
  - a comprehensive QA list and plan (the requester of a feature should QA!)
 
 One can iterate on a program for a long time (with diminishing returns), but at
 some point it makes more sense to expose it to the real world. There are some
 things which tests just won't catch.
+
+# Time and Space
+
+The best algorithms have the best time and space complexity. This is widely
+understood and is the subject of technical interviews. But understanding the
+concepts is different from recognizing where they are applied in the field.
+
+For example, does the whole file really need to be loaded into memory before
+use? Or instead, can it be read and sent as output in a continuous stream
+processing way with bounded memory.
+
+### Tradeoffs
+
+Suppose you need to create a random 2D dungeon composed of non overlapping
+rectangular rooms.
+
+A naive way would guess and check: randomly generate a position for the next
+room. If there is overlap, try again. This way is simple but will take an
+unbounded amount of time (as it could keep generating an overlapping position,
+forever). Even worse, if the dungeon is too dense then the generation algorithm
+_will_ get stuck. 
+
+A better way would utilize techniques like [binary space
+partitioning](https://www.roguebasin.com/index.php/Basic_BSP_Dungeon_generation)
+or [poisson disc sampling](https://www.jasondavies.com/poisson-disc/).
+
+An (arguably) even better way would randomly select from a suitably large set of
+pregenerate dungeons. _Whatever gets the job done!_
+
+### Recursion
+
+Avoid recursive functions:
+
+ - accidental infinite recursion -> stack overflow
+ - doesn't mesh well with language features like RAII since resources are freed
+   at the end of the lexical scope or function (depending on language) which
+   happens _after_ return. error prone
+
+All recursive algorithms can instead be written with a stack. Rather than an
+implicit stack (each recursive call’s stack frame), use an explicit data
+structure (and if it really matters [heap
+allocation](https://crates.io/crates/smallvec) can still be avoided).
 
 # Type System - Prefer Strong Types
 
@@ -564,7 +626,7 @@ struct Bytes(pub u32) // NOT BITS
 ```
 
 Especially when dealing with variance in the data. Only valid options should be
-representable (parsimoniety):
+representable (parsimony):
 
 ```rust
 // don't represent as string!
