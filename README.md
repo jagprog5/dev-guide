@@ -2,11 +2,13 @@
 
 # Developer Guidelines
 
-
-Broad technical and non technical guidelines. Top level headers organized
-alphabetically.
-
 </center>
+
+This includes broad technical and non technical guidelines. The top level
+headers are organized alphabetically.
+
+- this is my opinion!
+- this is only a guide; understand the situation and use your judgment
 
 # Ask
 
@@ -25,8 +27,8 @@ difference between the desired and expected behaviour is contrasted.
 That style of question is good for when there is a limited domain and an
 _immediate tangible goal_, but it's not the only way of generating value. An
 open question like "what does this part do and why is it done this way?" is
-great for technical discussion and is a lot less work. Things don't have to be
-rigid.
+great for technical discussion and is a lot more efficient. Things don't have to
+be rigid.
 
 # Decision Paralysis
 
@@ -36,35 +38,35 @@ possibilities. Document decisions and move on.
 ### Over Abstraction
 
 If there is only one realistic implementor of an interface, then that interface
-should not be created.
+should not be created; it's just adding extra boilerplate and can hinder
+readability. Prefer instead directly calling the functionality.
 
 # Dependencies - Reduce
 
 Organized from best to worst. In summary, prefer dependency-less code
 and avoid shell scripts.
 
- - Static Link
- - Dynamic Link
- - External Process ([execl](https://linux.die.net/man/3/execl))
- - Shell Scripts
+ - static Link
+ - dynamic Link
+ - external Process ([execl](https://linux.die.net/man/3/execl))
+ - shell Scripts
 
 ### Static Linked
 
-Suppose a program is created. On your system, it works fine. On a different
-system, it fails. It could fail because the shell version is different. Or maybe
-an external library is an incompatible version, etc.
+Suppose a program is created. On one system, it works fine. On another, it
+fails. This happen because some dependencies are different between the systems:
+
+ - if it's a script, then what will be interpreting it? what version?
+ - if it links against the libraries on the system, then what are the versions
+   of those libraries? what if a library isn't available?
 
 Containerization can help, but has other issues.
-  - The user needs a container runtime installed
-  - The container might need to be minimalized and hardened depending on
+  - the user needs a container runtime installed
+  - the container might need to be minimalized and hardened depending on
     deployment requirements
 
-This problem can be remediated by creating a statically linked program (check
+This problem can be mitigated by compiling a statically linked program (check
 with `ldd <binary>`).
-
-Here's a simple but extensible example. Of note from a shell script point of
-view, globbing and other features typically associated with the shell are
-available in your language of choice.
 
 ```go
 package main
@@ -127,10 +129,10 @@ and auditable as well (just open up the script to read what it does!).
 However...
 
 Shell scripts are highly coupled with a single deployment target.
- - Depends on what program (and version!) will be interpreting the script.
- - Depends on every single program which is used in the script. What if `curl`
+ - depends on what program (and version!) will be interpreting the script.
+ - depends on every single program which is used in the script. What if `curl`
    or `zip` isn't available on a system?
- - Needs to be re-written for Windows OS. Or a translation layer / sandbox like
+ - needs to be re-written for Windows OS; a translation layer / sandbox like
    Cygwin, WSL, or Git Bash could be used.
 
 Shell scripts are [bug
@@ -177,28 +179,32 @@ yourself).
 
 It should be easy for developers to do what they need to do.
 
+### Clashing
+
 Suppose there is some large tech stack being used; the whole system can't be run
 on a single developer's machine. This means that there is some environment which
-is shared between developers (an individual component will be deployed which
-interacts with the whole stack). There must be an explicit system so that
+is shared between developers. There must be an explicit system so that
 developers are not interfering with each-other. This could be as simple as a
-messaging thread.
+messaging thread or a lockout system. There should be no ambiguity on what is
+currently deployed.
 
-If a developer needs to test a feature it should be easy to do so.
- - There should be no ambiguity on what version is deployed.
- - Redeployment should be fast. Developers work off of rapid iteration, and
-   waiting for a CI/CD pipeline lengthens the debugging cycle. The whole stack
-   should not need to be redeployed; it should be properly modularized so a
-   single part can be swapped out as desired, ideally instantaneously.
- - The logs or other feedback mechanisms must be available and easy to use.
-   Ideally an event streaming service like kafka will allow a developer to view
-   what they want and only what they want.
+### Debug Cycle 
+
+If a developer needs to test a feature it should be easy to do so. In a perfect
+scenario, the developer should be able to wave their hand and receive
+instantaneous feedback on their code.
+
+ - the whole stack should not need to be redeployed; modularization should allow
+   a "fast path", so one part can be redeployed quickly
+ - logs or other feedback mechanisms must be available and easy to use; ideally
+   an event streaming service like kafka will allow a developer to view what
+   they want and only what they want.
 
 # Feedback
 
 Feedback is not a personal attack; it doesn't reflect on you as a person. It is
-only reflective of that particular work item. It is a typical part of the
-review process - no feedback is abnormal.
+only reflective of that particular work item. It is a typical part of the review
+process.
 
 Always be open to feedback and discussion on your work. Always try to understand
 others' perspectives, and in turn, explain your perspective to them. A long
@@ -254,11 +260,6 @@ Abstractions should cause less work, not more work. They should map to tangible
 steps of a procedure which can be easily thought about. This preserves
 readability. 
 
-# Moderation
-
-This document is intended as a guide, not a substitution, for your own thinking.
-Understand the situation and use your judgment.
-
 # Modularity
 
 Loosely coupled components linked by well defined interfaces is a must; bugs can
@@ -302,9 +303,7 @@ this compatibility matrix should not be necessary.
 ### Overburdened Sink
 
 Suppose there are many sources and one sink. This could be over a network, or
-just following the flow through some code. The sources all do different things.
-They all handle some cleanup of upstream data, maybe some enrichment,
-transformation, and processing which is specific to each source itself. 
+just following the flow through some code.
 
 It is the responsibility of each source to coax its data into the form that the
 sink is expecting. It is not the responsibility of the sink to mangle everyone's
@@ -411,18 +410,17 @@ the least amount of effort to use.
 
 ### Exceptions
 
-... are bad. Do not use.
-
-There's tons of [footguns](https://en.wiktionary.org/wiki/footgun#:~:text=footgun%20(plural%20footguns),shoot%20themselves%20in%20the%20foot.):
+Do not use exception. There's many
+[pitfalls](https://en.wiktionary.org/wiki/footgun#:~:text=footgun%20(plural%20footguns),shoot%20themselves%20in%20the%20foot.):
 
  - throwing an exception while unwinding the stack crashes the program
- - it is implicit control flow which the caller might not handle (should be explicit)
- - it complicates the object lifecycle. Creating a [partially
+ - implicit control flow which the caller might not handle (should be explicit)
+ - complicates the object lifecycle. Creating a [partially
    constructed](https://rollbar.com/blog/throw-exceptions-in-cpp-constructors/)
    object is dangerous
  - don't forget that move ctors should always be noexcept!
 
-There's so many pitfalls! Compare the above mental load with how
+Compare the above mental load with how
 Rust handles erroneous conditions:
 
 ```rust
@@ -548,30 +546,24 @@ synchronization. If the left hand doesn't know what the right hand is doing,
 then that's not good. From base principals, there should be an understand of how
 the company runs, and holistically what clients want.
 
-# Tests Because Tests
+# Tests
 
-Suppose you're developing a mission critical component and you have a ton of
-time. In that case it makes sense to add unit tests for complete coverage, and
-why not add in some fuzzing and static analysis in there as well. If there's a
-network dependency, then use a mocking framework. Ad nauseam. Those
-circumstances do pop up, but in a majority of cases it isn't worth it.
-Especially if the thing is simple, there's a deadline, and maybe there's just a
-bunch of components to get through this week. Practicality gets in the way.
+Suppose a mission critical program is being developed. There's plenty of
+precautions that can be taken:
 
-Testing should be done where it makes sense to do so! Anecdotally a
-disproportionate push for testing was because _surrounding or previous
-components were clearly lacking in quality_. Time might be better spent writing
-verifiable quality in the first place:
+ - unit tests (100% code coverage + visualization)
+ - [fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to ensure invariants hold
+ - [mocking](https://en.wikipedia.org/wiki/Mock_object) frameworks; simulate dependencies
+ - formal modeling tools like [alloy](https://alloytools.org/tutorials/online/)
+ - static analysis like [semgrep](https://semgrep.dev/) 
+ - a quality assurance plan; ideally the requester of a feature should also QA!
 
- - using higher level abstractions (libraries, and reduce manual memory management)
- - rethinking complexity in terms of [axiomatic
-   design](https://en.wikipedia.org/wiki/Axiomatic_design)
- - evaluating surrounding infrastructure (misconfigured devops, etc.)
- - a comprehensive QA list and plan (the requester of a feature should QA!)
-
-One can iterate on a program for a long time (with diminishing returns), but at
-some point it makes more sense to expose it to the real world. There are some
-things which tests just won't catch.
+However, these precautions should be done only when it makes sense to do so!
+This can be modelled as an optimization problem under uncertainty; how can the
+most utility be obtained with the available time; should more precautions be put
+in place, or should other responsibilities be addressed first. It could make
+more sense to trial in the field, since the tester is limited to their own
+ability to anticipate issues.
 
 # Time and Space
 
