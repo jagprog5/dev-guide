@@ -18,8 +18,8 @@ available, including the support of others.
 
 ### Low Stakes Questions
 
-From a technical perspective there is a correct way of asking a question;
-the details have been narrowed down to exact input and output with a [minimal
+From a technical perspective there is a "correct" way of asking a question; the
+details have been narrowed down to exact input and output with a [minimal
 reproducible
 example](https://stackoverflow.com/help/minimal-reproducible-example) and the
 difference between the desired and expected behaviour is contrasted.
@@ -41,24 +41,22 @@ If there is only one realistic implementor of an interface, then that interface
 should not be created; it's just adding extra boilerplate and can hinder
 readability. Prefer instead directly calling the functionality.
 
-# Dependencies - Reduce
+# Dependencies
 
-Organized from best to worst. In summary, prefer dependency-less code
-and avoid shell scripts.
-
- - static Link
- - dynamic Link
- - external Process ([execl](https://linux.die.net/man/3/execl))
- - shell Scripts
+Suppose a program needs to be deployed to a wide range of users. How should the
+dependencies be managed?
 
 ### Static Linked
 
-Suppose a program is created. On one system, it works fine. On another, it
-fails. This happen because some dependencies are different between the systems:
+This is the best option if it's available. Suppose a program is created. On one
+system, it works fine. On another, it fails. This happens because some
+dependencies are different between the systems:
 
- - if it's a script, then what will be interpreting it? what version?
  - if it links against the libraries on the system, then what are the versions
-   of those libraries? what if a library isn't available?
+   of those libraries?
+ - if it's a script, then what will be interpreting it? what version?
+ - if the language imports modules, can these be frozen (like python virtualenv)
+   and shipped with the package?
 
 Containerization can help, but has other issues.
   - the user needs a container runtime installed
@@ -66,7 +64,8 @@ Containerization can help, but has other issues.
     deployment requirements
 
 This problem can be mitigated by compiling a statically linked program (check
-with `ldd <binary>`).
+with `ldd <binary>`). Ship everything the binary needs, and create a build per
+platform.
 
 ```go
 package main
@@ -83,8 +82,11 @@ func main() {
 ### Dynamically Linked
 
 This is required when there are some libraries that are only available on the
-target system (e.g. graphics related libs). It can also reduce the size of the
-binary, but that's typically not worth the tradeoff.
+target system. For example, graphics related libs are front ends to the GPUs of
+those systems.
+
+It can also reduce the size of the binary, but that's typically not worth the
+tradeoff.
 
 ```go
 package main // -ldflags="-linkmode=external"
@@ -102,78 +104,25 @@ func main() {
 }
 ```
 
-Even just this simple step will fail to link on systems with an incompatible
-GLIBC version.
-
 ### External Process
 
 Suppose you need the functionality of some system tool, but that tool does not
 expose a linkable library. In that case it must be invoked using its command
-line interface.
+line interface. Similar to dynamic linking, but also needs to avoid any cli
+related quirks.
 
 ```go
 package main
 import("os/exec";"os")
 func main(){
-    // relies on command available and on $PATH
+  // relies on command available and on $PATH
+  //
+  // prevent file name from being interpret as a flag, like name "-f"
+  //                      VV
 	err:=exec.Command("rm","--","test.txt").Run()
-    ...
+  ...
 }
 ```
-
-### Shell
-
-Shell scripts do have a niche. If can reduce the verbosity of writing a
-procedure when compared to os/exec'ing external processes. They are pretty small
-and auditable as well (just open up the script to read what it does!).
-However...
-
-Shell scripts are highly coupled with a single deployment target.
- - depends on what program (and version!) will be interpreting the script.
- - depends on every single program which is used in the script. What if `curl`
-   or `zip` isn't available on a system?
- - needs to be re-written for Windows OS; a translation layer / sandbox like
-   Cygwin, WSL, or Git Bash could be used.
-
-Shell scripts are [bug
-prone](https://blog.cloudflare.com/pipefail-how-a-missing-shell-option-slowed-cloudflare-down/?utm_source=chatgpt.com/).
-Consider setting [strict
-mode](http://redsymbol.net/articles/unofficial-bash-strict-mode/):
-
-```bash
-#!/bin/bash
-set -euo pipefail
-IFS=$'\n\t'
-```
-
-Using the command line for passing input is bug prone.
-
-```bash
-rm $FILE        # WRONG. $FILE can expand: `file_name; malicious code here`
-rm "$FILE"      # WRONG. $FILE can be a flag like "-f". interpreted by CLI
-rm -- "$FILE"   # CORRECT. now check all tools for where this is needed
-```
-
-All of this shell nonsense can be avoided:
- - os/exec'ing a subprocess directly passes the arguments to the tool without
-being interpreted by the shell.
- - calling the lib API avoids any CLI related quirks (don't forget the "--" arg!)
-
-Use the right tool for the job. It _is possible_ to write a shell program of
-equal quality to other methods, just the same way that hand written assembly
-could be written with equal quality. Theoretically yes, but practically no.
-
-# Effort Matching
-
-If something is taking significantly more effort that it should, then it's
-likely that the wrong path is being taken. Take a step back and re-evaluate.
-Don't "tread the road less traveled", as it doesn't leverage the work that
-others have done.
-
-Though, it could be the side effect of a competitive setting, or there could be
-[hidden blockers](https://youtu.be/w3MDM0CmG-o). The important part is
-recognizing when effort isn't being matched (lest you needlessly exhaust
-yourself).
 
 # Ergonomics
 
@@ -216,49 +165,14 @@ suggestive or question form. "Have you considered... ?"
 # Forward Compatibility
 
 Once something starts getting used everywhere, its design gets locked in place
-pretty fast. All the dependees needs to be updated, and good luck if its
-deployed on premise. There needs to be a plan to support forwards compatibility
-before things go out. This could be something as simple as adding a version
-field to schemas or leaving future placeholders in library API.
+pretty fast. All the dependees needs to be updated. This might not be possible
+for on premise deployments. There needs to be a plan to support forwards
+compatibility before things go out. Add a version field to schemas and leave
+future placeholders in library API.
 
 ### Horizontal Scalability
 
 Have a plan for scalability. It could be as simple as hash based sharding.
-
-# Fragmentation
-
-Here a function creates a resty (http) client request and sets a token. The
-returned instance can then be used to finalize the details of the request and
-send it.
-
-```go
-func (r *Redacted) r() *resty.Request {
-    r := r.resty.R()
-    r.SetCookie(rl.authCookie)
-    return r
-}
-```
-
-This might seem innocent enough. Maybe it would make sense if this one small
-section is repeated numerous times. But otherwise, this function is too small.
-Good luck reading through code that's littered with tiny functions!
-Obfuscation is a pernicious art form.
-
-Here's an extreme example:
-
-```go
-func ToPointer[V any](value V) *V {
-    return &value
-}
-```
-
-This is only a hindrance since now more mental load is required to map to what
-the author wrote instead of just writing: `&value`. It's an unwillingness to
-adapt to the surrounding code base or ecosystem.
-
-Abstractions should cause less work, not more work. They should map to tangible
-steps of a procedure which can be easily thought about. This preserves
-readability. 
 
 # Modularity
 
@@ -287,7 +201,7 @@ Usage of ./redacted:
         Prints application version
 ```
 
-Sure, there are ways of managing this complexity:
+There are ways of managing this complexity:
 
  - the project could be forked, but now multiple forks need to be kept up to
    date with bug fixes
@@ -386,9 +300,7 @@ responsibility of project owners to clarify and _provide feedback_ on those
 expectations before implementation.
 
 Generally, functional requirements should flow down the hierarchy and design
-parameters should flow up the hierarchy. Assuming specialization, leadership
-should not be involved in design parameters and project owners should not be
-involved in functional requirements.
+parameters should flow up the hierarchy (with ample communication throughout).
 
 # Parsimony
 
@@ -414,8 +326,8 @@ Do not use exception. There's many
 [pitfalls](https://en.wiktionary.org/wiki/footgun#:~:text=footgun%20(plural%20footguns),shoot%20themselves%20in%20the%20foot.):
 
  - throwing an exception while unwinding the stack crashes the program
- - implicit control flow which the caller might not handle (should be explicit)
- - complicates the object lifecycle. Creating a [partially
+ - the caller might forget to handle implicit control flow (should be explicit)
+ - complicates the object lifecycle; creating a [partially
    constructed](https://rollbar.com/blog/throw-exceptions-in-cpp-constructors/)
    object is dangerous
  - don't forget that move ctors should always be noexcept!
@@ -437,14 +349,46 @@ solves the problem, so it's the correct one.
 
 NoSQL does have a niche. If the data is truly unstructured then it's
 suitable for the task. But verify: is this true? Or has there not been enough
-planning on the schemas to be stored. Ensure that's it's not "kicking the can
+planning on the schemas to be stored. Ensure that it's not "kicking the can
 down the road" by dumping whatever data into a NoSQL db, as this complicates
 logic in the future. Ensure that the underlying type used to represent the data
 is both explicit and the most restrictive model that works.
 
+# Readability
+
+Here a function creates a resty (http) client request and sets a token. The
+returned instance can then be used to finalize the details of the request and
+send it.
+
+```go
+func (r *Redacted) r() *resty.Request {
+    r := r.resty.R()
+    r.SetCookie(rl.authCookie)
+    return r
+}
+```
+
+This might seem ok at first glance. Maybe it would make sense if this one small
+section is repeated numerous times. But otherwise, this function is too small.
+Taken to the extreme, the code can become unreadable:
+
+```go
+func ToPointer[V any](value V) *V {
+    return &value
+}
+```
+
+This is only a hindrance since now more mental load is required to map to what
+the author wrote instead of just writing: `&value`. It's an unwillingness to
+adapt to the surrounding code base or ecosystem.
+
+Abstractions should cause less work, not more work. They should map to tangible
+steps of a procedure which can be easily thought about. This preserves
+readability. 
+
 # Reuse Work
 
-Doing something like this (using an established library):
+Prefer use of an established library:
 
 ```go
 details := auth.NewArtifactoryDetails()
@@ -462,8 +406,8 @@ bytes, err := rtManager.Ping()
 ...
 ```
 
-is WAY easier and WAY safer than constructing the api calls yourself
-via manual string manipulation + unmarshalling the rest responses:
+The above is significantly safer and easier than than constructing the api calls
+yourself via manual string manipulation + unmarshalling the rest responses:
 
 ```go
 url := cfg.BitbucketURL + "/repositories/" + cfg.BitbucketWorkspace
@@ -488,22 +432,58 @@ b, err := io.ReadAll(tee)
 ...
 ```
 
-# Review with Effort
+### Effort Matching
 
-Good heavens! Here, a function is declared with an argument. The argument is
-immediately discarded.
+If something is taking significantly more effort that it should, then it's
+likely that the wrong path is being taken. Take a step back and re-evaluate.
+Don't "tread the road less traveled", as it doesn't leverage the work that
+others have done.
 
-```go
-func (r *Redacted) do_something(repo string) error {
-    _ = repo
-    // ...
-}
+Though, it could be the side effect of a competitive setting, or there could be
+[hidden blockers](https://youtu.be/w3MDM0CmG-o). The important part is
+understanding the overall context to understand why things are the way they are.
+
+# Shell
+
+Shell scripts do have a niche. If can reduce the verbosity of writing a
+procedure when compared to os/exec'ing external processes. They are pretty small
+and auditable as well (just open up the script to read what it does!).
+However...
+
+Shell scripts are highly coupled with a single deployment target.
+ - depends on what program (and version!) will be interpreting the script.
+ - depends on every single program which is used in the script. What if `curl`
+   or `zip` isn't available on a system?
+ - needs to be re-written for Windows OS; a translation layer / sandbox like
+   Cygwin, WSL, or Git Bash could be used.
+
+Shell scripts are [bug
+prone](https://blog.cloudflare.com/pipefail-how-a-missing-shell-option-slowed-cloudflare-down/?utm_source=chatgpt.com/).
+Consider setting [strict
+mode](http://redsymbol.net/articles/unofficial-bash-strict-mode/):
+
+```bash
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 ```
 
-Writing quality the first time is easier than going back and fixing things up.
-Fortunately this case is easy to fix, but if it can happen here then it can
-happen in more complicated cases as well. Take time on reviews, spend effort to
-understand the context, and don't approve merge requests haphazardly!
+Using the command line for passing input is bug prone.
+
+```bash
+rm $FILE        # WRONG. $FILE can expand: `file_name; malicious code here`
+rm "$FILE"      # WRONG. $FILE can be a flag like "-f". interpreted by CLI
+rm -- "$FILE"   # CORRECT. now check all tools for where this is needed
+```
+
+There are safer alternatives:
+ - os/exec'ing a subprocess directly passes the arguments to the tool without
+being interpreted by the shell.
+ - calling the lib API avoids any CLI related quirks (don't forget the "--" arg!)
+
+It _is possible_ to write a shell program of equal quality to other methods,
+just the same way that hand written assembly could be written with equal
+quality. Evaluate if it really is the right tool for the job.
 
 # State Synchronization
 
@@ -643,7 +623,7 @@ bad; it's not (reasonably) possible in the language:
 
 ```C
 enum ThingType {
-    THING_TYPE_INT
+    THING_TYPE_INT,
     THING_TYPE_FLOAT
 }
 
