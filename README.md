@@ -4,13 +4,14 @@
 
 </center>
 
-This includes broad technical and non technical guidelines. The top level
-headers are organized alphabetically.
+This includes broad technical and non technical guidelines.
 
 - this is my opinion!
 - this is only a guide; understand the situation and use your judgment
 
-# Ask
+# Behavioral
+
+## Ask
 
 Put in a reasonable effort to understand something. If that doesn't work, ask
 for help. It is irresponsible to neglect to use the resources that are
@@ -30,18 +31,107 @@ open question like "what does this part do and why is it done this way?" is
 great for technical discussion and is a lot more efficient. Things don't have to
 be rigid.
 
-# Decision Paralysis
+## Effort Matching
 
-Design work necessitates a focus on the relevant subset of
-possibilities. Document decisions and move on.
+If something is taking significantly more effort than it should, then it's
+possible that the wrong choices were made. Take a step back and consider the
+overall context. And in doing so, don't fall prey to the sunk cost fallacy.
 
-### Over Abstraction
+## Feedback
 
-If there is only one realistic implementor of an interface, then that interface
-should not be created; it's just adding extra boilerplate and can hinder
-readability. Prefer instead directly calling the functionality.
+Feedback is not a personal attack; it doesn't reflect on you as a person. It is
+only reflective of that particular work item. It is a typical part of the review
+process.
 
-# Dependencies
+Always be open to feedback and discussion on your work. Always try to understand
+others' perspectives, and in turn, explain your perspective to them. A long
+comment is indicative of _interest_.
+
+In line with the above: when giving feedback, try to be concise and write with a
+suggestive or question form. "Have you considered... ?"
+
+## Ownership
+
+Projects should have owners. From a management point of view there is a point
+of contact who has responsibility. From a technical perspective, context
+switching is more work.
+
+That being said, it is _ok_ for there to be overlap; it reduces the [bus
+factor](https://activecollab.com/blog/project-management/bus-factor), encourages
+team cohesion, and allows people to better leverage their expertise. Ownership
+does _not_ mean siloing; helping out across projects should be encouraged as
+long as responsibilities aren't neglected. Just ensure the project owner is
+apprised.
+
+### Hierarchy
+
+Project owners existing implies an organizational hierarchy. It is the
+responsibility of leadership to articulate expectations, and it is the
+responsibility of project owners to clarify and _provide feedback_ on those
+expectations before implementation.
+
+Generally, functional requirements should flow down the hierarchy and design
+parameters should flow up the hierarchy (with ample communication throughout).
+
+## Research
+
+Don't stick to an inferior option because it's familiar. For example, prefer
+exploration and find an established library: 
+
+```go
+details := auth.NewArtifactoryDetails()
+details.SetUrl(url)
+details.SetUser(cfg.Username)
+details.SetAccessToken(cfg.Token)
+serviceConfig, err := config.NewConfigBuilder().
+    SetServiceDetails(details).
+    Build()
+if err != nil { ... }
+rtManager, err := artifactory.New(serviceConfig)
+if err != nil { ... }
+bytes, err := rtManager.Ping()
+..
+...
+```
+
+The above is significantly safer and easier than than constructing the api calls
+yourself via manual string manipulation + unmarshalling the rest responses:
+
+```go
+url := cfg.BitbucketURL + "/repositories/" + cfg.BitbucketWorkspace
+     + "?fields=next,values.name,values.updated_on&sort=updated_on"
+if lastCheck != "" {
+    url += "&q=updated_on>" + strings.Replace(lastCheck, "+", "%2B", -1)
+}
+ 
+req, err := http.NewRequest("GET", url, nil)
+if err != nil { ... }
+req.SetBasicAuth(cfg.BitbucketUsername, cfg.BitbucketAppPW)
+
+rsp, err := http.DefaultClient.Do(req)
+if err != nil { ... }
+defer rsp.Body.Close()
+if rsp.StatusCode != http.StatusOK {
+    ...
+}
+var buf bytes.Buffer
+tee := io.TeeReader(rsp.Body, &buf)
+b, err := io.ReadAll(tee)
+...
+```
+
+## Team Cohesion
+
+If the left hand doesn't know what the right hand is doing, then that's not
+good. There should be an effort to maintain inter- and intra-team cohesion.
+Especially for remote or hybrid work; although productivity on an individual
+scale increases, team cohesions can suffer if its not executed correctly.
+Implementing a [daily standup](https://www.atlassian.com/agile/scrum/standups)
+and infrequent all-hands meetings can help. Just ensure that meetings add value.
+
+# Design
+
+## Dependencies
 
 Suppose a program needs to be deployed to a wide range of users. How should the
 dependencies be managed?
@@ -63,7 +153,7 @@ Containerization can help, but has other issues.
   - the container might need to be minimalized and hardened depending on
     deployment requirements
 
-This problem can be mitigated by compiling a statically linked program (check
+This problem can be mitigated by compiling a statically linked binary (check
 with `ldd <binary>`). Ship everything the binary needs, and create a build per
 platform.
 
@@ -119,12 +209,12 @@ func main(){
   //
   // prevent file name from being interpret as a flag, like name "-f"
   //                      VV
-	err:=exec.Command("rm","--","test.txt").Run()
+  err:=exec.Command("rm","--","test.txt").Run()
   ...
 }
 ```
 
-# Ergonomics
+## Ergonomics
 
 It should be easy for developers to do what they need to do.
 
@@ -149,20 +239,24 @@ instantaneous feedback on their code.
    an event streaming service like kafka will allow a developer to view what
    they want and only what they want.
 
-# Feedback
+### Documentation
 
-Feedback is not a personal attack; it doesn't reflect on you as a person. It is
-only reflective of that particular work item. It is a typical part of the review
-process.
+Documentation is multi faceted; each contribute to maintainability:
 
-Always be open to feedback and discussion on your work. Always try to understand
-others' perspectives, and in turn, explain your perspective to them. A long
-comment is indicative of _interest_.
+ - comment are required to explain the context; the notion that code can be self
+documenting is [not true](https://queue.acm.org/detail.cfm?id=1053354)
+ - tests help maintain backward compatibility since expected behavior is
+stated unambiguously
+ - modularity and readability: bad code is harder to read than good code
+ - README: auxiliary docs forms a directed graph which is fully reachable from
+   this entrypoint; explain what the project is, how to use it, where it is
+   used, and what it uses
 
-In line with the above: when giving feedback, try to be concise and write with a
-suggestive or question form. "Have you considered... ?"
+If a newbie can't figure out what something does nor how it fits into the bigger
+picture, then that is a huge problem caused by a neglect of documentation. Poor
+documentation is technical debt and a barrier to collaboration.
 
-# Forward Compatibility
+## Forward Compatibility
 
 Once something starts getting used everywhere, its design gets locked in place
 pretty fast. All the dependees needs to be updated. This might not be possible
@@ -174,7 +268,7 @@ future placeholders in library API.
 
 Have a plan for scalability. It could be as simple as hash based sharding.
 
-# Modularity
+## Modularity
 
 Loosely coupled components linked by well defined interfaces is a must; bugs can
 then be isolated along boundaries (and if a component is bad it can easily be
@@ -221,7 +315,7 @@ just following the flow through some code.
 
 It is the responsibility of each source to coax its data into the form that the
 sink is expecting. It is not the responsibility of the sink to mangle everyone's
-formats into one form - this causes too much logical burden and interleaving.
+formats into one form; this causes too much logical burden and interleaving.
 Each source only has to handle its domain, so it keeps a clear division of where
 logic must be applied; it allows the problem to be modularized as sub-problems
 which can be more easily handled individually.
@@ -245,7 +339,7 @@ between source and sink.
 Repeating code in this way is ok; common code can be managed as a library. Each
 source can explicitly opt-in to common processing by importing it.
 
-### Composition Over Inheritance
+#### Composition Over Inheritance
 
 The above "Requirements for Centralization" **is the same reasoning for why
 inheritance is bad**. Logic should be explicitly opted-in, not implicitly
@@ -256,7 +350,7 @@ hitting something like the [diamond
 problem](https://en.wikipedia.org/wiki/Multiple_inheritance), inheritance just
 doesn't model the world in a good way.
 
-# Naming
+### Naming
 
 Names should be related to the thing being named. A violating example: do you
 know what a [Class
@@ -279,30 +373,7 @@ case consider following [Ubuntu's Naming
 Convention](https://en.wikipedia.org/wiki/Ubuntu_version_history#Naming_convention)
 (alphabetical code names).
 
-# Ownership
-
-Projects should have owners. From a management point of view there is a point
-of contact who has responsibility. From a technical perspective context
-switching is more work.
-
-That being said, it is _ok_ for there to be overlap; it reduces the [bus
-factor](https://activecollab.com/blog/project-management/bus-factor), encourages
-team cohesion, and allows people to better leverage their expertise. Ownership
-does _not_ mean siloing; helping out across projects should be encouraged as
-long as responsibilities aren't neglected. Just ensure the project owner is
-apprised.
-
-### Hierarchy
-
-Project owners existing implies an organizational hierarchy. It is the
-responsibility of leadership to articulate expectations, and it is the
-responsibility of project owners to clarify and _provide feedback_ on those
-expectations before implementation.
-
-Generally, functional requirements should flow down the hierarchy and design
-parameters should flow up the hierarchy (with ample communication throughout).
-
-# Parsimony
+## Parsimony
 
 The simplest solution which fulfills requirements is the correct solution.
 Complexity breeds complexity, as it requires a larger mental load to break apart
@@ -312,6 +383,17 @@ In the short term, it is always easier to staple a feature on top of an existing
 project. It is harder, but sometime necessary, to rethink the existing solution
 in a way which better integrates with a feature. Entropy must be actively
 opposed.
+
+### Decision Paralysis
+
+Design work necessitates a focus on the relevant subset of
+possibilities. Document decisions and move on.
+
+#### Over Abstraction
+
+If there is only one realistic implementor of an interface, then that interface
+should not be created; it's just adding extra boilerplate and can hinder
+readability. Prefer instead directly calling the functionality.
 
 ### Leaky Abstraction
 
@@ -354,7 +436,7 @@ down the road" by dumping whatever data into a NoSQL db, as this complicates
 logic in the future. Ensure that the underlying type used to represent the data
 is both explicit and the most restrictive model that works.
 
-# Readability
+## Readability
 
 Here a function creates a resty (http) client request and sets a token. The
 returned instance can then be used to finalize the details of the request and
@@ -386,66 +468,102 @@ Abstractions should cause less work, not more work. They should map to tangible
 steps of a procedure which can be easily thought about. This preserves
 readability. 
 
-# Reuse Work
+## State Synchronization
 
-Prefer use of an established library:
+Having multiple states which must be kept in sync is bug prone. In these cases,
+there should be an abstraction to prevent error (should set state in
+multiple places automatically).
 
-```go
-details := auth.NewArtifactoryDetails()
-details.SetUrl(url)
-details.SetUser(cfg.Username)
-details.SetAccessToken(cfg.Token)
-serviceConfig, err := config.NewConfigBuilder().
-    SetServiceDetails(details).
-    Build()
-if err != nil { ... }
-rtManager, err := artifactory.New(serviceConfig)
-if err != nil { ... }
-bytes, err := rtManager.Ping()
-..
-...
-```
+### Documentation
 
-The above is significantly safer and easier than than constructing the api calls
-yourself via manual string manipulation + unmarshalling the rest responses:
+Documentation should be checked into the version control system as it is the
+single source of truth. There should not be some auxiliary source of
+documentation like a Google Doc or Microsoft Loop (which will then have to be
+  kept in sync). They should be checked in and can be written in,
+  [Markdown](https://github.blog/developer-skills/github/include-diagrams-markdown-files-mermaid/),
+  [LaTeX](https://stackoverflow.com/questions/6188780/git-latex-workflow), or
+  even
+  [docx](https://stackoverflow.com/questions/22439517/view-docx-file-on-github-and-use-git-diff-on-docx-file-format).
 
-```go
-url := cfg.BitbucketURL + "/repositories/" + cfg.BitbucketWorkspace
-     + "?fields=next,values.name,values.updated_on&sort=updated_on"
-if lastCheck != "" {
-    url += "&q=updated_on>" + strings.Replace(lastCheck, "+", "%2B", -1)
-}
- 
-req, err := http.NewRequest("GET", url, nil)
-if err != nil { ... }
-req.SetBasicAuth(cfg.BitbucketUsername, cfg.BitbucketAppPW)
+### Data Transfer Objects
 
-rsp, err := http.DefaultClient.Do(req)
-if err != nil { ... }
-defer rsp.Body.Close()
-if rsp.StatusCode != http.StatusOK {
-    ...
-}
-var buf bytes.Buffer
-tee := io.TeeReader(rsp.Body, &buf)
-b, err := io.ReadAll(tee)
-...
-```
+Suppose there is a codebase which has been fractured into multiple languages.
+Along the borders of these programs, data transfer objects (DTOs) are encoded
+and sent through the wire. The expected schema on the sending and receiving ends
+need to be kept in sync.
 
-### Effort Matching
+Because of the language barrier, it's tempting to simply redefine (copy) the DTO
+on both sides (and keep them in sync). A better mechanism defines the type in
+only one place, and everywhere that needs it can then import it, or use auto
+generate bindings to the language of choice. Ideally the entire code base
+consist of one language; lint time feedback shows dependents. It's hard to make
+changes, let alone changes which harmonize with the rest of the code base if
+it's difficult to find what even uses it!
 
-If something is taking significantly more effort that it should, then it's
-likely that the wrong path is being taken. Take a step back and re-evaluate.
-Don't "tread the road less traveled", as it doesn't leverage the work that
-others have done.
+## Tests
 
-Though, it could be the side effect of a competitive setting, or there could be
-[hidden blockers](https://youtu.be/w3MDM0CmG-o). The important part is
-understanding the overall context to understand why things are the way they are.
+Suppose a mission critical program is being developed. There's plenty of
+precautions that can be taken:
 
-# Shell
+ - unit tests (100% code coverage + visualization)
+ - [fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to ensure invariants hold
+ - [mocking](https://en.wikipedia.org/wiki/Mock_object) frameworks; simulate dependencies
+ - formal modeling tools like [alloy](https://alloytools.org/tutorials/online/)
+ - static analysis like [semgrep](https://semgrep.dev/) 
+ - a quality assurance plan; ideally the requester of a feature should also QA!
 
-Shell scripts do have a niche. If can reduce the verbosity of writing a
+However, these precautions should be done only when it makes sense to do so!
+This can be modelled as an optimization problem under uncertainty; how can the
+most utility be obtained with the available time; should more precautions be put
+in place, or should other responsibilities be addressed first. It could make
+more sense to trial in the field, since the tester is limited to their own
+ability to anticipate issues.
+
+## Time and Space
+
+In theory, best algorithms have the best time and space complexity. This is widely
+understood and is the subject of technical interviews. But understanding the
+concepts is different from recognizing where they are applied in the field.
+
+For example, does the whole file really need to be loaded into memory before
+use? Or instead, can it be read and sent as output in a continuous stream
+processing way with bounded memory.
+
+### Tradeoffs
+
+Suppose you need to create a finite random 2D dungeon composed of non
+overlapping rectangular rooms.
+
+A naive way would guess and check: randomly generate a position for the next
+room. If there is overlap, try again. This way is simple but will take an
+unbounded amount of time (as it could keep generating an overlapping position,
+forever). Even worse, if the dungeon is too dense then the generation algorithm
+_will_ get stuck. 
+
+A better way would utilize techniques like [binary space
+partitioning](https://www.roguebasin.com/index.php/Basic_BSP_Dungeon_generation)
+or [poisson disc sampling](https://www.jasondavies.com/poisson-disc/).
+
+An (arguably) even better way would randomly select from a suitably large set of
+pregenerate dungeons. _Whatever gets the job done!_
+
+### Recursion
+
+Avoid recursive functions:
+
+ - accidental infinite recursion -> stack overflow
+ - doesn't mesh well with language features like RAII since resources are freed
+   at the end of the lexical scope or function (depending on language) which
+   happens _after_ return. error prone
+
+All recursive algorithms can instead be written with a stack. Rather than an
+implicit stack (each recursive call’s stack frame), use an explicit data
+structure (and if it really matters [heap
+allocation](https://crates.io/crates/smallvec) can still be avoided).
+
+## Tool Choice
+
+Shell scripts do have a niche. It can reduce the verbosity of writing a
 procedure when compared to os/exec'ing external processes. They are pretty small
 and auditable as well (just open up the script to read what it does!).
 However...
@@ -483,111 +601,9 @@ being interpreted by the shell.
 
 It _is possible_ to write a shell program of equal quality to other methods,
 just the same way that hand written assembly could be written with equal
-quality. Evaluate if it really is the right tool for the job.
+quality. Evaluate if it is the right tool for the job.
 
-# State Synchronization
-
-Having multiple states which must be kept in sync is bug prone. In these cases,
-there should be an abstraction to prevent error (should set state in
-multiple places automatically).
-
-### Documentation
-
-Documentation should be checked into the version control system as it is the
-single source of truth. There should not be some auxiliary source of
-documentation like a Google Doc or Microsoft Loop (which will then have to be
-  kept in sync). They should be checked in and can be written in,
-  [Markdown](https://github.blog/developer-skills/github/include-diagrams-markdown-files-mermaid/),
-  [LaTeX](https://stackoverflow.com/questions/6188780/git-latex-workflow), or
-  even
-  [docx](https://stackoverflow.com/questions/22439517/view-docx-file-on-github-and-use-git-diff-on-docx-file-format).
-
-### Data Transfer Objects
-
-Suppose there is a codebase which has been fractured into multiple languages.
-Along the borders of these programs, data transfer objects (DTOs) are encoded
-and sent through the wire. The expected schema on the sending and receiving ends
-need to be kept in sync.
-
-Because of the language barrier, it's tempting to simply redefine (copy) the DTO
-on both sides (and keep them in sync). A better mechanism defines the type in
-only one place, and everywhere that needs it can then import it, or use auto
-generate bindings to the language of choice. Ideally the entire code base
-consist of one language; lint time feedback shows dependents. It's hard to make
-changes, let alone changes which harmonize with the rest of the code base if
-it's difficult to find what even uses it!
-
-# Team Cohesion
-
-Working online is great. There's no need to commute to work. Productivity on an
-individual scale increases (the office is distracting). However, team cohesion
-suffers. There needs to be an effort to ensure inter and intra team
-synchronization. If the left hand doesn't know what the right hand is doing,
-then that's not good. From base principals, there should be an understand of how
-the company runs, and holistically what clients want.
-
-# Tests
-
-Suppose a mission critical program is being developed. There's plenty of
-precautions that can be taken:
-
- - unit tests (100% code coverage + visualization)
- - [fuzzing](https://en.wikipedia.org/wiki/Fuzzing) to ensure invariants hold
- - [mocking](https://en.wikipedia.org/wiki/Mock_object) frameworks; simulate dependencies
- - formal modeling tools like [alloy](https://alloytools.org/tutorials/online/)
- - static analysis like [semgrep](https://semgrep.dev/) 
- - a quality assurance plan; ideally the requester of a feature should also QA!
-
-However, these precautions should be done only when it makes sense to do so!
-This can be modelled as an optimization problem under uncertainty; how can the
-most utility be obtained with the available time; should more precautions be put
-in place, or should other responsibilities be addressed first. It could make
-more sense to trial in the field, since the tester is limited to their own
-ability to anticipate issues.
-
-# Time and Space
-
-The best algorithms have the best time and space complexity. This is widely
-understood and is the subject of technical interviews. But understanding the
-concepts is different from recognizing where they are applied in the field.
-
-For example, does the whole file really need to be loaded into memory before
-use? Or instead, can it be read and sent as output in a continuous stream
-processing way with bounded memory.
-
-### Tradeoffs
-
-Suppose you need to create a random 2D dungeon composed of non overlapping
-rectangular rooms.
-
-A naive way would guess and check: randomly generate a position for the next
-room. If there is overlap, try again. This way is simple but will take an
-unbounded amount of time (as it could keep generating an overlapping position,
-forever). Even worse, if the dungeon is too dense then the generation algorithm
-_will_ get stuck. 
-
-A better way would utilize techniques like [binary space
-partitioning](https://www.roguebasin.com/index.php/Basic_BSP_Dungeon_generation)
-or [poisson disc sampling](https://www.jasondavies.com/poisson-disc/).
-
-An (arguably) even better way would randomly select from a suitably large set of
-pregenerate dungeons. _Whatever gets the job done!_
-
-### Recursion
-
-Avoid recursive functions:
-
- - accidental infinite recursion -> stack overflow
- - doesn't mesh well with language features like RAII since resources are freed
-   at the end of the lexical scope or function (depending on language) which
-   happens _after_ return. error prone
-
-All recursive algorithms can instead be written with a stack. Rather than an
-implicit stack (each recursive call’s stack frame), use an explicit data
-structure (and if it really matters [heap
-allocation](https://crates.io/crates/smallvec) can still be avoided).
-
-# Type System - Prefer Strong Types
+## Type System - Prefer Strong Types
 
 Prefer strong typing over weak typing. It prevents mistakes and is a form of
 documentation.
