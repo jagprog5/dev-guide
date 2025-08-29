@@ -371,7 +371,23 @@ operating system versions, the difference between them can be considered an
 arbitrary collection of unrelated things which can't be named easily. In this
 case consider following [Ubuntu's Naming
 Convention](https://en.wikipedia.org/wiki/Ubuntu_version_history#Naming_convention)
-(alphabetical code names).
+(alphabetical code names). Create a unique name that isn't associated to any
+other names.
+
+#### Overfitting
+
+Building off of the previous example, a bad name for a "Metal Fire" would be a
+"Magnesium or Titanium or Sodium or Potassium Fire". This is over-fitting; there
+is a memorization of the information which the thing represents without creating
+a simpler abstraction. Individual parts should be harmonized into their shared
+identity.
+
+Preventing over-fitting might introduce errors (there are non flammable metals).
+But consider that a name lives in a context (it's not useful to communicate the
+metals that _are not_ on fire). Otherwise, a balance is struck between an
+information dense name and the name's error. Similarly to above, if the only
+suitably accurate name is too information dense, then create a unique name that
+takes on its own special meaning.
 
 ## Parsimony
 
