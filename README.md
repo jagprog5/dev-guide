@@ -45,7 +45,7 @@ process.
 
 Always be open to feedback and discussion on your work. Always try to understand
 others' perspectives, and in turn, explain your perspective to them. A long
-comment is indicative of _interest_.
+comment is indicative of the reviewer's _interest_ in the subject.
 
 In line with the above: when giving feedback, try to be concise and write with a
 suggestive or question form. "Have you considered... ?"
@@ -125,7 +125,7 @@ b, err := io.ReadAll(tee)
 If the left hand doesn't know what the right hand is doing, then that's not
 good. There should be an effort to maintain inter- and intra-team cohesion.
 Especially for remote or hybrid work; although productivity on an individual
-scale increases, team cohesions can suffer if its not executed correctly.
+scale increases, team cohesions can suffer if it's not executed correctly.
 Implementing a [daily standup](https://www.atlassian.com/agile/scrum/standups)
 and infrequent all-hands meetings can help. Just ensure that meetings add value.
 
@@ -238,6 +238,16 @@ instantaneous feedback on their code.
  - logs or other feedback mechanisms must be available and easy to use; ideally
    an event streaming service like kafka will allow a developer to view what
    they want and only what they want.
+
+### Errors
+
+Errors shouldn't drop information. A noncompliant example: `Child process
+failed: err="exitCode: 1"`.
+
+This reports that there is an error but it doesn't indicate what the underlying
+reason for it is. Errors should be like stack traces, propagating information
+from callee to caller. In this case, the child process's stderr should be
+returned as part of the error message.
 
 ### Documentation
 
@@ -352,7 +362,7 @@ doesn't model the world in a good way.
 
 ### Naming
 
-Names should be related to the thing being named. A violating example: do you
+Names should be related to the thing being named. A noncompliant example: do you
 know what a [Class
 D](https://www.ccohs.ca/oshanswers/safety_haz/fire_extinguishers.html) fire is?
 Of course not! A better name would be "Metal Fire". Otherwise there is an
@@ -500,6 +510,10 @@ documentation like a Google Doc or Microsoft Loop (which will then have to be
   [LaTeX](https://stackoverflow.com/questions/6188780/git-latex-workflow), or
   even
   [docx](https://stackoverflow.com/questions/22439517/view-docx-file-on-github-and-use-git-diff-on-docx-file-format).
+
+For developers, tools like [Read The Docs](https://about.readthedocs.com/) or
+[swagger ui](https://swagger.io/tools/swagger-ui/) allow for documentation to be
+generated from the code itself.
 
 ### Data Transfer Objects
 
@@ -673,6 +687,14 @@ Thing thing;
 thing.type = THING_TYPE_INT;
 thing.value.thing_float = 1.0; // OOPS
 ```
+
+### Errors
+
+If the caller might handle different types of errors in different ways then it
+is the responsibility of the callee to identify and enumerate them with an
+explicit type representation. Having an opaque error string which must be parsed
+for the error reason is not ideal, and if possible the callee should do the work
+to determine what the error's type is.
 
 ### Value Aliasing
 
