@@ -7,7 +7,7 @@
 This includes broad technical and non technical guidelines.
 
 - this is my opinion!
-- this is only a guide; understand the situation and use your judgment
+- this is only a guide; understand the situation and use your judgment.
 
 # Behavioral
 
@@ -178,21 +178,20 @@ those systems.
 It can also reduce the size of the binary, but that's typically not worth the
 tradeoff.
 
-```go
-package main // -ldflags="-linkmode=external"
+#### Explicit
 
-/*
-#include <stdio.h>
-#include <stdlib.h>
-*/
-import "C"
-import "unsafe"
-func main() {
-	msg := C.CString("Hello from C!")
-	defer C.free(unsafe.Pointer(msg))
-	if C.puts(msg) < 0 { /* ... */ }
-}
-```
+Typical dynamic linking is implicit; the [ELF](https://wiki.osdev.org/ELF)
+format is loaded and if the libraries aren't available then it will fail to link
+at the beginning of the program's execution. This happens automatically.
+
+In contrast, a shared library can be loaded explicitly at runtime via
+[dlopen](https://man7.org/linux/man-pages/man3/dlopen.3.html). This provides
+more control (what specific symbols are needed and how should failure be
+handled) and is useful in a variety of cases:
+
+- JIT compilation
+- fallback (link to GPU frontend if available, or fallback to CPU)
+- defer; only if necessary then dynamic link
 
 ### External Process
 
@@ -239,16 +238,6 @@ instantaneous feedback on their code.
    an event streaming service like kafka will allow a developer to view what
    they want and only what they want.
 
-### Errors
-
-Errors shouldn't drop information. A noncompliant example: `Child process
-failed: err="exitCode: 1"`.
-
-This reports that there is an error but it doesn't indicate what the underlying
-reason for it is. Errors should be like stack traces, propagating information
-from callee to caller. In this case, the child process's stderr should be
-returned as part of the error message.
-
 ### Documentation
 
 Documentation is multi faceted; each contribute to maintainability:
@@ -265,6 +254,16 @@ stated unambiguously
 If a newbie can't figure out what something does nor how it fits into the bigger
 picture, then that is a huge problem caused by a neglect of documentation. Poor
 documentation is technical debt and a barrier to collaboration.
+
+### Errors
+
+Errors shouldn't drop information. A noncompliant example: `Child process
+failed: err="exitCode: 1"`.
+
+This reports that there is an error but it doesn't indicate what the underlying
+reason for it is. Errors should be like stack traces, propagating information
+from callee to caller. In this case, the child process's stderr should be
+returned as part of the error message.
 
 ## Forward Compatibility
 
@@ -551,7 +550,7 @@ ability to anticipate issues.
 
 ## Time and Space
 
-In theory, best algorithms have the best time and space complexity. This is widely
+In theory, the best algorithms have the best time and space complexity. This is widely
 understood and is the subject of technical interviews. But understanding the
 concepts is different from recognizing where they are applied in the field.
 
