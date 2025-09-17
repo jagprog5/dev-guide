@@ -17,25 +17,16 @@ Put in a reasonable effort to understand something. If that doesn't work, ask
 for help. It is irresponsible to neglect to use the resources that are
 available, including the support of others.
 
-### Low Stakes Questions
+Don't necessarily spend time to create a [minimal reproducible
+example](https://stackoverflow.com/help/minimal-reproducible-example). It's not
+possible to know what you don't know, and there may be a better approach. Broad
+questions promote technical discussion.
 
-From a technical perspective there is a "correct" way of asking a question; the
-details have been narrowed down to exact input and output with a [minimal
-reproducible
-example](https://stackoverflow.com/help/minimal-reproducible-example) and the
-difference between the desired and expected behaviour is contrasted.
-
-That style of question is good for when there is a limited domain and an
-_immediate tangible goal_, but it's not the only way of generating value. An
-open question like "what does this part do and why is it done this way?" is
-great for technical discussion and is a lot more efficient. Things don't have to
-be rigid.
-
-## Effort Matching
+## Effort Aware Decision Making
 
 If something is taking significantly more effort than it should, then it's
 possible that the wrong choices were made. Take a step back and consider the
-overall context. And in doing so, don't fall prey to the sunk cost fallacy.
+overall context. Be aware of the sunk cost fallacy.
 
 ## Feedback
 
@@ -49,6 +40,12 @@ comment is indicative of the reviewer's _interest_ in the subject.
 
 In line with the above: when giving feedback, try to be concise and write with a
 suggestive or question form. "Have you considered... ?"
+
+## Inert Client
+
+Don't assume that a user is willing to do more than is necessary. It should
+"just work" from their perspective. Exploration is required to determine what
+exactly that means.
 
 ## Ownership
 
@@ -67,11 +64,15 @@ apprised.
 
 Project owners existing implies an organizational hierarchy. It is the
 responsibility of leadership to articulate expectations, and it is the
-responsibility of project owners to clarify and _provide feedback_ on those
-expectations before implementation.
+responsibility of project owners to clarify expectations before implementation.
 
 Generally, functional requirements should flow down the hierarchy and design
 parameters should flow up the hierarchy (with ample communication throughout).
+
+## Presentation
+
+The way that things are said can matter more than how they are said. Be mindful
+of professionalism, especially when client facing.
 
 ## Research
 
@@ -94,7 +95,7 @@ bytes, err := rtManager.Ping()
 ...
 ```
 
-The above is significantly safer and easier than than constructing the api calls
+The above is significantly safer and easier than constructing the api calls
 yourself via manual string manipulation + unmarshalling the rest responses:
 
 ```go
