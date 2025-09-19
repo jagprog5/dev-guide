@@ -425,7 +425,8 @@ concepts is different from recognizing where they are applied in the field.
 
 For example, does the whole file really need to be loaded into memory before
 use? Or instead, can it be read and sent as output in a continuous stream
-processing way with bounded memory.
+processing way with bounded memory. Keep in mind extreme situations which could
+fill all available disk / memory.
 
 ### Tradeoffs
 
@@ -458,6 +459,10 @@ All recursive algorithms can instead be written with a stack. Rather than an
 implicit stack (each recursive call’s stack frame), use an explicit data
 structure (and if it really matters [heap
 allocation](https://crates.io/crates/smallvec) can still be avoided).
+
+Similarly, avoid the use of [variable length arrays
+(VLA)](https://en.wikipedia.org/wiki/Variable-length_array) as it could cause
+stack exhaustion.
 
 ## Tool Choice
 
