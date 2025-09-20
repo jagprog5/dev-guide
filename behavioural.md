@@ -36,6 +36,11 @@ Don't assume that a user is willing to do more than is necessary. It should
 "just work" from their perspective. Exploration is required to determine what
 exactly that means.
 
+However, there must be an achievable domain of responsibility. Otherwise you hit
+[Zawinski's Law](https://en.wikipedia.org/wiki/Jamie_Zawinski#Zawinski's_Law),
+in which software bloats to become universal platforms. Taking on more
+responsibility is a tradeoff; there is more outreach but more to maintain.
+
 ## Ownership
 
 Projects should have owners. From a management point of view there is a point

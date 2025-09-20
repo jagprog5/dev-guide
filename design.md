@@ -289,13 +289,6 @@ If there is only one realistic implementor of an interface, then that interface
 should not be created; it's just adding extra boilerplate and can hinder
 readability. Prefer instead directly calling the functionality.
 
-### Leaky Abstraction
-
-Implementation details shouldn't be exposed. If they are, then they can't be
-changed later (someone might be using it!). Plus it makes the interface more
-difficult to use. The most useful abstractions handle all cases while requiring
-the least amount of effort to use.
-
 ### Exceptions
 
 Do not use exception. There's many
@@ -318,8 +311,25 @@ let thing: Value = Value::might_err_ctor()?;
 ```
 
 That is all there should be! Explicitly, it either returns the constructed
-object, or it doesn't. This is the simplest representation that
-solves the problem, so it's the correct one.
+object, or it doesn't. Compared to exceptions, this solution is simpler while
+still providing the same functionality.
+
+### Leaky Abstraction
+
+Implementation details shouldn't be exposed. If they are, then they can't be
+changed later (someone might be using it!). Plus it makes the interface more
+difficult to use. The most useful abstractions handle all cases while requiring
+the least amount of effort to use.
+
+### Orthogonality
+
+[Paraphrased](http://erights.org/elib/distrib/pipeline.html): "Modular
+abstractions export orthogonal composable primitives."
+
+From the client's point of view, if an idiom is expected, then a specialization
+can be created to serve that case. However, this specialization should be
+implemented using those same primitives, and to prevent confusion it should be
+transparent that it is doing so.
 
 ### SQL over NoSQL
 
@@ -510,7 +520,6 @@ quality. Evaluate if it is the right tool for the job.
 
 Prefer strong typing over weak typing. It prevents mistakes and is a form of
 documentation.
-
 
 ```rust
 struct Bytes(pub u32) // NOT BITS
