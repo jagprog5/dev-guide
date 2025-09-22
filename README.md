@@ -7,5 +7,5 @@
 This includes broad technical and nontechnical guidelines for software
 development.
 
-- [behavioural](./behavioural.md)
+- [behavioral](./behavioral.md)
 - [design](./design.md)
