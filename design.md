@@ -5,7 +5,7 @@
 Suppose a program needs to be deployed to a wide range of users. How should the
 dependencies be managed?
 
-### Static Linked
+### Statically Linked
 
 This is the best option if it's available. Suppose a program is created. On one
 system, it works fine. On another, it fails. This happens because some
@@ -60,14 +60,14 @@ handled) and is useful in a variety of cases:
 
 - JIT compilation
 - fallback (link to GPU frontend if available, or fallback to CPU)
-- defer; only if necessary then dynamic link
+- defer; only if necessary then dynamic link. e.g. (trusted) plugin systems
 
 ### External Process
 
-Suppose you need the functionality of some system tool, but that tool does not
+Suppose the functionality of a system tool is required, but that tool does not
 expose a linkable library. In that case it must be invoked using its command
-line interface. Similar to dynamic linking, but also needs to avoid any cli
-related quirks.
+line interface. Similar drawbacks to dynamic linking but also needs to avoid any
+cli related quirks.
 
 ```go
 package main
@@ -137,10 +137,16 @@ returned as part of the error message.
 ## Forward Compatibility
 
 Once something starts getting used everywhere, its design gets locked in place
-pretty fast. All the dependees needs to be updated. This might not be possible
+pretty fast. All the dependees need to be updated. This might not be possible
 for on premise deployments. There needs to be a plan to support forwards
 compatibility before things go out. Add a version field to schemas and leave
 future placeholders in library API.
+
+### Feedback
+
+In order: gather functional requirements, derive design parameters, review and
+audit, then implement. Major design changes late in a project interfere with
+backwards compatibility.
 
 ### Horizontal Scalability
 
@@ -230,10 +236,9 @@ doesn't model the world in a good way.
 
 ### Naming
 
-Names should be related to the thing being named. A noncompliant example: do you
-know what a [Class
-D](https://www.ccohs.ca/oshanswers/safety_haz/fire_extinguishers.html) fire is?
-Of course not! A better name would be "Metal Fire". Otherwise there is an
+Names should be related to the thing being named. For example a [Class
+D](https://www.ccohs.ca/oshanswers/safety_haz/fire_extinguishers.html) fire is
+poorly named. A better name would be "Metal Fire". Otherwise there is an
 arbitrary mapping which needs to be memorized between the name and the thing
 being named.
 
@@ -440,8 +445,8 @@ fill all available disk / memory.
 
 ### Tradeoffs
 
-Suppose you need to create a finite random 2D dungeon composed of non
-overlapping rectangular rooms.
+Suppose a finite random 2D dungeon is being generated with non overlapping
+rectangular rooms.
 
 A naive way would guess and check: randomly generate a position for the next
 room. If there is overlap, try again. This way is simple but will take an

@@ -11,6 +11,12 @@ example](https://stackoverflow.com/help/minimal-reproducible-example). It's not
 possible to know what you don't know, and there may be a better approach. Broad
 questions promote technical discussion.
 
+## Communication
+
+Communication should be tailored to the audience; implementation details might
+not matter. Functional differences (and how the implementation details relate to
+them) do matter.
+
 ## Effort Aware Decision Making
 
 If something is taking significantly more effort than it should, then it's
@@ -19,16 +25,17 @@ overall context. Be aware of the sunk cost fallacy.
 
 ## Feedback
 
-Feedback is not a personal attack; it doesn't reflect on you as a person. It is
-only reflective of that particular work item. It is a typical part of the review
-process.
+Feedback is not a personal attack; it does not reflect on the person as an
+individual. It is only reflective of that particular work item and is a normal
+part of the review process.
 
-Always be open to feedback and discussion on your work. Always try to understand
-others' perspectives, and in turn, explain your perspective to them. A long
-comment is indicative of the reviewer's _interest_ in the subject.
+The reviewee should remain open to feedback and discussion on their work. Effort
+should be made to understand others' perspectives, and in turn, the reviewee
+should explain their own perspective. A long comment is indicative of the
+reviewer's _interest_ in the subject.
 
-In line with the above: when giving feedback, try to be concise and write with a
-suggestive or question form. "Have you considered... ?"
+In line with the above: when providing feedback, try to be concise and write
+with a suggestive or question form, such as: "Have you considered… ?"
 
 ## Inert Client
 
@@ -67,6 +74,28 @@ parameters should flow up the hierarchy (with ample communication throughout).
 
 The way that things are said can matter more than how they are said. Be mindful
 of professionalism, especially when client facing.
+
+## Qualification
+
+Some domains are inherently difficult (e.g.
+[cryptography](https://gotchas.salusa.dev/)). Suppose a message needs to be sent
+over an untrusted channel (which requires integrity but not confidentiality).
+Someone who is familiar with software but not necessarily cryptography might
+naively implement an authentication code as follows (to be sent along with the
+message):
+
+`hash( concatenate( secret, message ) )`
+
+If the message is tampered with then the code will not match. Additionally,
+since the code is derived from the secret, others can't create their own spoofed
+messages. However this is vulnerable to [length extension
+attacks](https://en.wikipedia.org/wiki/Length_extension_attack). Suppose the
+  receiver uses a string comparison function instead of a constant time
+comparison, then this would be vulnerable to [timing
+attacks](https://security.stackexchange.com/a/74552).
+
+Developers need general knowledge to know what they don't know and mitigate
+potential issues.
 
 ## Research
 
@@ -117,7 +146,7 @@ b, err := io.ReadAll(tee)
 
 ## Team Cohesion
 
-If the left hand doesn't know what the right hand is doing, then that's not
+If the left hand doesn't know what the right hand is doing then that's not
 good. There should be an effort to maintain inter- and intra-team cohesion.
 Especially for remote or hybrid work; although productivity on an individual
 scale increases, team cohesions can suffer if it's not executed correctly.
