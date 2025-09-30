@@ -70,6 +70,12 @@ responsibility of project owners to clarify expectations before implementation.
 Generally, functional requirements should flow down the hierarchy and design
 parameters should flow up the hierarchy (with ample communication throughout).
 
+#### Broken Telephone
+
+There should be as few layers as possible between the developer and the source
+of functional requirements. Ideally the developer should experience the context
+first hand.
+
 ## Presentation
 
 The way that things are said can matter more than how they are said. Be mindful
